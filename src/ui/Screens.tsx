@@ -1,7 +1,14 @@
 // Menu, setup, how-to-play, settings and credits screens (spec §15.1, §15.2, §20).
 
 import { useState, type ReactNode } from 'react';
-import { BANK_SWAP_CARDS, HAND_SIZE, SHOP_ITEMS, type Card, type Difficulty, type Extras, type RuleSetId, type SeatConfig } from '../engine';
+import {
+  BANK_SWAP_CARDS,
+  HAND_SIZE,
+  RULE_SETS,
+  SHOP_ITEMS,
+  deckCardCount,
+  deckSizeFor,
+  twoPlayerDefenseCount, type Card, type Difficulty, type Extras, type RuleSetId, type SeatConfig } from '../engine';
 import { CREATOR_CREDIT, TAGLINE } from './branding';
 import { CardView } from './Card';
 import type { Settings } from './storage';
@@ -25,7 +32,7 @@ export const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = 
     id: 'piggy',
     name: 'Piggy Bank',
     summary:
-      'A gentler twist on the Original: when you go bankrupt you keep your smallest pile, and everyone gets one last turn after the sixth Bankrupt. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.',
+      'A gentler twist on the Original: when you go bankrupt you keep your smallest pile, and everyone gets one last turn after the sixth Bankrupt. With 2 players, the deck has fewer Vault Locks and Sheriffs.',
   },
 ];
 
@@ -254,23 +261,41 @@ export function Setup({
 }
 
 const REFERENCE: { card: Card; text: string }[] = [
-  { card: { id: 'ref-5', kind: 'money', value: 5 }, text: '14 in the basic deck.' },
-  { card: { id: 'ref-25', kind: 'money', value: 25 }, text: '14 in the basic deck.' },
-  { card: { id: 'ref-50', kind: 'money', value: 50 }, text: '14 in the basic deck.' },
-  { card: { id: 'ref-100', kind: 'money', value: 100 }, text: '14 in the basic deck.' },
-  { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. 6 hidden in the deck.' },
-  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the basic deck.' },
-  { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the basic deck." },
-  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the basic deck.' },
+  { card: { id: 'ref-5', kind: 'money', value: 5 }, text: 'Money. Bank 2 or more that match.' },
+  { card: { id: 'ref-25', kind: 'money', value: 25 }, text: 'Money. Bank 2 or more that match.' },
+  { card: { id: 'ref-50', kind: 'money', value: 50 }, text: 'Money. Bank 2 or more that match.' },
+  { card: { id: 'ref-100', kind: 'money', value: 100 }, text: 'Money. Bank 2 or more that match.' },
+  { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. Always exactly 6 in the deck.' },
+  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once.' },
+  { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff." },
+  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once.' },
   {
     card: { id: 'ref-w', kind: 'bank_swap' },
-    text: `Extra card. Play it on another player to trade your whole bank for theirs. Blocked by Lawyer. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
+    text: 'Extra card. Play it on another player to trade your whole bank for theirs. Blocked only by Lawyer.',
   },
   {
     card: { id: 'ref-l', kind: 'lawyer' },
-    text: `Extra card. Play it when someone plays Bank Swap on you to cancel it. Used once. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
+    text: 'Extra card. Play it when someone plays Bank Swap on you to cancel it. Used once.',
   },
 ];
+
+/** Deck contents at each table size, worked out from the rules so this page cannot go stale. */
+const DECKS = [2, 3, 4].map((players) => {
+  const size = deckSizeFor(players, 'by_players', BANK_SWAP_CARDS);
+  return {
+    players,
+    money: size.moneyCopies,
+    specials: size.specialCopies,
+    swaps: size.swapCopies,
+    withExtras: deckCardCount(size),
+    withoutExtras: deckCardCount({ ...size, swapCopies: 0 }),
+  };
+});
+const TWO_PLAYER = DECKS[0];
+const PIGGY_TWO_PLAYER_DEFENSES = twoPlayerDefenseCount(
+  deckSizeFor(2, 'by_players'),
+  RULE_SETS.piggy.twoPlayerDefenseCopies,
+);
 
 export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPractice: () => void }) {
   return (
@@ -282,6 +307,7 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
         </p>
 
         <h2>On your turn — do one thing</h2>
+        <p>If the power-up shop is on, you may buy one power-up first. Then pick one:</p>
         <ul>
           <li>
             <strong>Bank</strong> 2 or more matching money cards (two $100s bank $200), <em>or</em>
@@ -294,8 +320,9 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           </li>
         </ul>
         <p>
-          Everyone starts with {HAND_SIZE} cards. After your turn you draw back up to {HAND_SIZE}. Discarded cards never
-          come back.
+          Everyone starts with {HAND_SIZE} cards. After your turn you draw back up to {HAND_SIZE}. If you use a Vault
+          Lock, Sheriff or Lawyer when it is not your turn, you draw back up to {HAND_SIZE} straight away. Discarded
+          cards never come back.
         </p>
 
         <h2>Watch out — Bankrupt!</h2>
@@ -340,18 +367,58 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
 
         <h2>Extra: Bank Swap and Lawyer cards</h2>
         <p>
-          When switched on, Bank Swap cards and the same number of Lawyer cards are shuffled into the deck (2 of each
-          with 2 players, 3 with 3, 4 with 4). Play a Bank Swap on another player to trade your whole bank for theirs
-          — perfect when you are behind. Only a <strong>Lawyer</strong> can stop it; a Sheriff cannot.
+          When switched on, Bank Swap cards and the same number of Lawyer cards are shuffled into the deck (
+          {DECKS.map((d) => `${d.swaps} of each with ${d.players} players`).join(', ')}). Play a Bank Swap on another
+          player to trade your whole bank for theirs — perfect when you are behind. Only a <strong>Lawyer</strong> can
+          stop it; a Sheriff cannot. You never have to play a Bank Swap.
         </p>
 
-        <h2>Bigger table, bigger deck</h2>
+        <h2>What is in the deck</h2>
         <p>
-          There are always exactly 6 Bankrupt cards. With 2 players the deck is the basic 80 cards. With 3 players
-          there are one and a half times as many of the other cards (117 in all), and with 4 players twice as many
-          (154 in all), so the game lasts about as long however many are playing. Bank Swap and Lawyer cards add 4,
-          6 or 8 more.
+          There are always exactly 6 Bankrupt cards. The rest of the deck grows with the number of players, so the
+          game lasts about as long however many are playing.
         </p>
+        <div className="tablewrap">
+          <table className="results">
+            <thead>
+              <tr>
+                <th scope="col">Players</th>
+                <th scope="col">Each money value</th>
+                <th scope="col">Vault Lock, Bank Thief, Sheriff</th>
+                <th scope="col">Bank Swap, Lawyer (extra)</th>
+                <th scope="col">Cards in all</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DECKS.map((d) => (
+                <tr key={d.players}>
+                  <th scope="row">{d.players}</th>
+                  <td>{d.money}</td>
+                  <td>{d.specials} each</td>
+                  <td>{d.swaps} each</td>
+                  <td>
+                    {d.withoutExtras} <small>({d.withExtras} with the extra cards)</small>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Playing together</h2>
+        <ul>
+          <li>
+            <strong>Play with Friends:</strong> one person hosts and gets an invite code. Up to three others type the
+            code (or open the invite link) on their own phone, tablet or computer.
+          </li>
+          <li>
+            <strong>Pass &amp; Play:</strong> everyone shares one device and passes it round. The game hides each hand
+            between turns.
+          </li>
+          <li>
+            <strong>Play vs Computer:</strong> play against one to three computer players.
+          </li>
+        </ul>
 
         <h2>Bankrupt Attack mode</h2>
         <p>
@@ -366,7 +433,9 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
         <p>
           Also on the Game Setup screen. Bankrupt is a trap again, but when you go bankrupt you keep your smallest
           pile (the one worth the least — but a one-pile bank is still all gone). After the sixth Bankrupt, everyone
-          gets one last turn. In a 2-player game, 2 Vault Locks and 2 Sheriffs are left in the box.
+          gets one last turn. In a 2-player game there are only {PIGGY_TWO_PLAYER_DEFENSES} Vault Locks and{' '}
+          {PIGGY_TWO_PLAYER_DEFENSES} Sheriffs (the usual deck has {TWO_PLAYER.specials} of each), so attacks get
+          through more often.
         </p>
 
         <h2>The cards</h2>

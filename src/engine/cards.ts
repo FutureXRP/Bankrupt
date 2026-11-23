@@ -43,14 +43,29 @@ export type DeckSize = { moneyCopies: number; specialCopies: number; swapCopies:
 
 export const BASE_DECK: DeckSize = { moneyCopies: MONEY_COPIES, specialCopies: SPECIAL_COPIES, swapCopies: 0 };
 
-/** Bigger tables use a bigger deck so the game lasts about as long for everyone. */
+/**
+ * How many times the basic money / Vault Lock / Bank Thief / Sheriff cards are
+ * used at each table size. Bigger tables (and ten-card hands) empty the deck
+ * faster, and the game ends on the sixth Bankrupt, so the deck grows to keep
+ * games about the same length. Every factor must keep 14x and 6x whole numbers.
+ */
+export const DECK_FACTOR_BY_PLAYERS: Record<number, number> = { 2: 1.5, 3: 2, 4: 2.5 };
+
 export function deckSizeFor(playerCount: number, scale: 'fixed' | 'by_players', bankSwapCards = 0): DeckSize {
-  const factor = scale === 'by_players' ? (playerCount >= 4 ? 2 : playerCount === 3 ? 1.5 : 1) : 1;
+  const factor = scale === 'by_players' ? (DECK_FACTOR_BY_PLAYERS[playerCount] ?? 1) : 1;
   return {
     moneyCopies: MONEY_COPIES * factor,
     specialCopies: SPECIAL_COPIES * factor,
     swapCopies: Math.round(bankSwapCards * factor),
   };
+}
+
+/**
+ * Vault Locks (and Sheriffs) used in a 2-player game. The rule is written for
+ * the basic deck (for example 4 of the 6) and scales with a bigger deck.
+ */
+export function twoPlayerDefenseCount(size: DeckSize, basicCopies: number): number {
+  return Math.min(size.specialCopies, Math.round((basicCopies * size.specialCopies) / SPECIAL_COPIES));
 }
 
 export const deckCardCount = (size: DeckSize) =>

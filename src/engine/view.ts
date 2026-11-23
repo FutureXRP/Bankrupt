@@ -1,7 +1,7 @@
 // What one player is allowed to know. The AI only ever receives this view, so it
 // cannot see rival hands or the order of the draw deck (spec §14).
 
-import type { Card } from './cards';
+import { twoPlayerDefenseCount, type Card } from './cards';
 import type { RuleConfig } from './rules';
 import { bankTotal, type TurnBuffs } from './shop';
 import type { GameState, PendingAttack, Phase } from './state';
@@ -59,7 +59,7 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
     rules: { ...state.rules },
     defenseCopies:
       state.players.length === 2
-        ? Math.min(state.deck.specialCopies, state.rules.twoPlayerDefenseCopies)
+        ? twoPlayerDefenseCount(state.deck, state.rules.twoPlayerDefenseCopies)
         : state.deck.specialCopies,
     lawyerCopies: state.deck.swapCopies,
     hand: [...self.hand],

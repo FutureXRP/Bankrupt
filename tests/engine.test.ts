@@ -531,12 +531,14 @@ describe('Piggy Bank rule set', () => {
     expect(s.winnerIds).toEqual(['p2']);
   });
 
-  it('a 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box', () => {
+  it('a 2-player game leaves a third of the Vault Locks and Sheriffs in the box', () => {
     const two = createGame({ players: seats(2), seed: 3, rules: RULE_SETS.piggy });
-    expect(two.removed.map((c) => c.kind).sort()).toEqual(['sheriff', 'sheriff', 'vault_lock', 'vault_lock']);
+    // The 2-player deck has 9 of each; Piggy Bank keeps 6 (4 of every basic 6).
+    expect(two.removed.map((c) => c.kind).sort()).toEqual(['sheriff', 'sheriff', 'sheriff', 'vault_lock', 'vault_lock', 'vault_lock']);
     const inPlay = [...two.drawPile, ...two.players.flatMap((p) => p.hand)];
-    expect(inPlay).toHaveLength(76);
-    expect(inPlay.filter((c) => c.kind === 'vault_lock')).toHaveLength(4);
+    expect(inPlay).toHaveLength(111);
+    expect(inPlay.filter((c) => c.kind === 'vault_lock')).toHaveLength(6);
+    expect(getPlayerView(two, 'p1').defenseCopies).toBe(6);
     expect(inPlay.filter((c) => c.kind === 'bankrupt')).toHaveLength(6);
     expect(checkInvariants(two)).toEqual([]);
     expect(createGame({ players: seats(3), seed: 3, rules: RULE_SETS.piggy }).removed).toHaveLength(0);
@@ -565,8 +567,8 @@ describe('Piggy Bank rule set', () => {
     expect(checkInvariants(s)).toEqual([]);
   });
 
-  it('the deck grows with the table: 80 cards for 2, 117 for 3, 154 for 4, always 6 Bankrupt', () => {
-    for (const [count, cards, money] of [[2, 80, 2520], [3, 117, 3780], [4, 154, 5040]] as const) {
+  it('the deck grows with the table: 117 cards for 2, 154 for 3, 191 for 4, always 6 Bankrupt', () => {
+    for (const [count, cards, money] of [[2, 117, 3780], [3, 154, 5040], [4, 191, 6300]] as const) {
       const s = createGame({ players: seats(count), seed: 9, rules: RULE_SETS.original });
       const all = [...s.drawPile, ...s.players.flatMap((p) => p.hand)];
       expect(all).toHaveLength(cards);
@@ -578,6 +580,8 @@ describe('Piggy Bank rule set', () => {
     // The basic rules object still deals the plain 80-card deck at any table size.
     const plain = createGame({ players: seats(4), seed: 9 });
     expect(plain.drawPile.length + 24).toBe(80);
+    const plainTwo = createGame({ players: seats(2), seed: 9 });
+    expect(plainTwo.drawPile.length + 12).toBe(80);
   });
 
   it('every rule set deals ten cards and refills to ten', () => {
@@ -766,8 +770,8 @@ describe('power-up shop', () => {
 describe('Bank Swap card', () => {
   const SWAP = { ...RULE_SETS.original, bankSwapCards: 2 };
 
-  it('adds 2 Bank Swaps and 2 Lawyers to the basic deck, scaled with the table', () => {
-    for (const [count, swaps, cards] of [[2, 2, 84], [3, 3, 123], [4, 4, 162]] as const) {
+  it('adds Bank Swaps and the same number of Lawyers, scaled with the table', () => {
+    for (const [count, swaps, cards] of [[2, 3, 123], [3, 4, 162], [4, 5, 201]] as const) {
       const s = createGame({ players: seats(count), seed: 2, rules: SWAP });
       const all = [...s.drawPile, ...s.players.flatMap((p) => p.hand)];
       expect(all.filter((c) => c.kind === 'bank_swap')).toHaveLength(swaps);

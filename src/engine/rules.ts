@@ -46,13 +46,16 @@ export type RuleConfig = {
    * 1 = exactly one card (spec §9). 6 = "dump and redraw" as many as they like.
    */
   stuckDiscardLimit: number;
-  /** Copies of Vault Lock and of Sheriff used in a 2-player game (the rest stay in the box). */
+  /**
+   * Copies of Vault Lock and of Sheriff used in a 2-player game, counted against
+   * the basic six (the rest stay in the box). Scales up with a bigger deck.
+   */
   twoPlayerDefenseCopies: number;
   /**
    * fixed: always the basic 80-card deck.
-   * by_players: 3 players use 1.5× and 4 players 2× the money, Vault Lock, Bank
-   *   Thief and Sheriff cards (still six Bankrupt), so games last about as long
-   *   at every table size.
+   * by_players: 2 players use 1.5×, 3 players 2× and 4 players 2.5× the money,
+   *   Vault Lock, Bank Thief and Sheriff cards (still six Bankrupt), so games
+   *   last about 14–16 rounds at every table size with ten-card hands.
    */
   deckScale: 'fixed' | 'by_players';
   /**

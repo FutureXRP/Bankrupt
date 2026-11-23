@@ -69,18 +69,21 @@ offices and mobile carriers) block direct connections. Everyone on the same home
 
 ## Deck size
 
-There are always six Bankrupt cards. The rest of the deck grows with the number of players, because the game
-ends on the sixth Bankrupt and a bigger table empties the deck faster:
+Everyone is dealt ten cards and refills to ten. There are always six Bankrupt cards. The rest of the deck grows
+with the number of players, because the game ends on the sixth Bankrupt and a bigger table empties the deck
+faster:
 
-| Players | Deck | Each money value | Vault Lock / Bank Thief / Sheriff | Average rounds (was, with 80 cards) |
-|---|---|---|---|---|
-| 2 | 80 cards | 14 | 6 each | about 13 |
-| 3 | 117 cards | 21 | 9 each | about 14 (was 8) |
-| 4 | 154 cards | 28 | 12 each | about 15 (was 5) |
+| Players | Each money value | Vault Lock / Bank Thief / Sheriff | Deck | With Bank Swap + Lawyer | Average rounds |
+|---|---|---|---|---|---|
+| 2 | 21 | 9 each | 117 cards | 123 cards (3 of each) | about 15 |
+| 3 | 28 | 12 each | 154 cards | 162 cards (4 of each) | about 15 |
+| 4 | 35 | 15 each | 191 cards | 201 cards (5 of each) | about 14 |
 
-Round counts are from 1,500 simulated games per row under Original rules. The shuffle itself was checked over
-20,000 deals: Bankrupt cards land evenly through the deck. Setting `deckScale: 'fixed'` in the rules file goes
-back to 80 cards at every table size.
+Round counts are from 600 simulated games per row under Original rules with both extras on; Bankrupt Attack
+runs a little longer (16–18 rounds). The shuffle itself was checked over 20,000 deals: Bankrupt cards land
+evenly through the deck. The multipliers are `DECK_FACTOR_BY_PLAYERS` in
+[`src/engine/cards.ts`](./src/engine/cards.ts); setting `deckScale: 'fixed'` in the rules file goes back to
+the basic 80 cards at every table size.
 
 ## Three rule sets
 
@@ -106,7 +109,7 @@ games per setup:
 |---|---|
 | A bankrupted player keeps their smallest pile (a one-pile bank is still lost entirely) | Players finishing on $0: about 23% → about 1%, together with the next change |
 | After the sixth Bankrupt, everyone gets one last turn | Turns each in a 4-player game: about 5 → about 6 |
-| A 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box | Turns with nothing to play in 2-player games: about 19% → about 7% |
+| A 2-player game uses 6 Vault Locks and 6 Sheriffs instead of 9 | Turns with nothing to play in 2-player games: about 19% → about 7% |
 
 Simulations measure balance, not fun. Whether Piggy Bank rules stay is the creator's call.
 
@@ -137,9 +140,9 @@ number of each card:
 
 | Players | Bank Swaps | Lawyers | Deck with this extra on |
 |---|---|---|---|
-| 2 | 2 | 2 | 84 cards |
-| 3 | 3 | 3 | 123 cards |
-| 4 | 4 | 4 | 162 cards |
+| 2 | 3 | 3 | 123 cards |
+| 3 | 4 | 4 | 162 cards |
+| 4 | 5 | 5 | 201 cards |
 
 ## Rules still to confirm with the creator
 
