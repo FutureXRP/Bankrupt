@@ -19,7 +19,7 @@ export const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = 
     id: 'attack',
     name: 'Bankrupt Attack',
     summary:
-      "Bankrupt cards go into your hand. Play one to wipe out another player's bank — unless they block it with Vault Lock. After the sixth Bankrupt is drawn, everyone gets one last turn.",
+      "Bankrupt cards go secretly into your hand. Play one to wipe out another player's bank — unless they block it with Vault Lock. Once the sixth has been drawn, everyone gets one last turn.",
   },
   {
     id: 'piggy',
@@ -274,8 +274,9 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
         <p>
           Pick this on the Game Setup screen to turn Bankrupt into a weapon. When you draw a Bankrupt card it goes
           into your hand, and on your turn you can play it on another player to wipe out their whole bank. They can
-          block it with a Vault Lock. The counter still goes up each time a Bankrupt is drawn; after the sixth,
-          everyone gets one last turn, so nobody is left holding a Bankrupt they never got to use.
+          block it with a Vault Lock. Drawing one is a secret — nobody is told, and the counter only goes up when a
+          Bankrupt is played. Once the sixth has been drawn, everyone gets one last turn, so nobody is left holding
+          a Bankrupt they never got to use.
         </p>
 
         <h2>Piggy Bank rules — a gentler twist</h2>

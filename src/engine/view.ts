@@ -31,6 +31,16 @@ export type PlayerView = {
   turnNumber: number;
 };
 
+/**
+ * The Bankrupt count everyone is allowed to know. When Bankrupt is a trap, every
+ * draw is public. When it is held and played (attack mode), draws are secret
+ * and only the ones that have been played are counted.
+ */
+export function publicBankruptCount(state: GameState): number {
+  if (state.rules.bankruptMode === 'trap') return state.bankruptDrawnCount;
+  return state.players.reduce((sum, p) => sum + p.stats.bankruptPlayed, 0);
+}
+
 export function getPlayerView(state: GameState, playerId: string): PlayerView {
   const self = state.players.find((p) => p.id === playerId);
   if (!self) throw new Error(`Unknown player ${playerId}`);
@@ -48,7 +58,7 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
     })),
     drawCount: state.drawPile.length,
     discardPile: [...state.discardPile],
-    bankruptDrawnCount: state.bankruptDrawnCount,
+    bankruptDrawnCount: publicBankruptCount(state),
     bankedThisTurn: state.bankedThisTurn,
     currentPlayerId: state.players[state.currentPlayerIndex].id,
     phase: state.phase,
@@ -73,5 +83,6 @@ export function maskStateFor(state: GameState, playerId: string): GameState {
     drawPile: state.drawPile.map(blank),
     removed: [],
     rngState: 0,
+    bankruptDrawnCount: publicBankruptCount(state),
   };
 }

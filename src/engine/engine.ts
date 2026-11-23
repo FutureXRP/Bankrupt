@@ -189,8 +189,7 @@ function refill(s: GameState) {
     s.bankruptDrawnCount++;
 
     if (s.rules.bankruptMode === 'attack') {
-      player.hand.push(card);
-      log(s, 'draw', `A Bankrupt card was drawn — ${counter(s)} revealed.`, player.id);
+      player.hand.push(card); // a secret: nobody is told until it is played
       continue;
     }
 

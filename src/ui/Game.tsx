@@ -12,6 +12,7 @@ import {
   getPlayerView,
   hasLegalPrimaryAction,
   isAttackKind,
+  publicBankruptCount,
   pileSavedFromBankrupt,
   scoreGame,
   sumMoney,
@@ -148,6 +149,8 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const stealing = iAmActor && state.phase === 'theft_selection';
   const defending = iAmActor && (state.phase === 'reaction' || state.phase === 'bankrupt_draw');
   const trap = state.rules.bankruptMode === 'trap';
+  const bankruptCount = publicBankruptCount(state);
+  const counterLabel = trap ? 'Bankrupt cards drawn' : 'Bankrupt cards played';
 
   // What the current selection can do.
   const picked = seat.hand.filter((c) => selected.includes(c.id));
@@ -206,16 +209,16 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
         <div
           className="counter"
           role="img"
-          aria-label={`Bankrupt cards revealed: ${state.bankruptDrawnCount} of ${BANKRUPT_TOTAL}`}
+          aria-label={`${counterLabel}: ${bankruptCount} of ${BANKRUPT_TOTAL}`}
         >
-          <span className="counter__label">{trap ? 'Bankrupt cards drawn' : 'Bankrupt cards revealed'}</span>
+          <span className="counter__label">{counterLabel}</span>
           <span className="counter__pips" aria-hidden="true">
             {Array.from({ length: BANKRUPT_TOTAL }, (_, i) => (
-              <span key={i} className={`pip${i < state.bankruptDrawnCount ? ' pip--on' : ''}`} />
+              <span key={i} className={`pip${i < bankruptCount ? ' pip--on' : ''}`} />
             ))}
           </span>
           <span className="counter__value" aria-hidden="true">
-            {state.bankruptDrawnCount} / {BANKRUPT_TOTAL}
+            {bankruptCount} / {BANKRUPT_TOTAL}
           </span>
         </div>
         <div className="piles">

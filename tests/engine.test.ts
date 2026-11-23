@@ -11,6 +11,9 @@ import {
   buildDeck,
   checkInvariants,
   createGame,
+  getPlayerView,
+  maskStateFor,
+  publicBankruptCount,
   scoreGame,
   sumMoney,
   validateAction,
@@ -483,9 +486,15 @@ describe('Piggy Bank rule set', () => {
     expect(total(s, 0)).toBe(110); // drawing it does not hurt you
     expect(handIds(s, 0, 'bankrupt')).toHaveLength(1);
     expect(s.bankruptDrawnCount).toBe(1);
+    // The draw is a secret: no announcement, and the public count stays at 0 for everyone.
+    expect(s.actionLog.some((e) => /bankrupt/i.test(e.text))).toBe(false);
+    expect(publicBankruptCount(s)).toBe(0);
+    expect(getPlayerView(s, 'p2').bankruptDrawnCount).toBe(0);
+    expect(maskStateFor(s, 'p2').bankruptDrawnCount).toBe(0);
     s.currentPlayerIndex = 0; // skip round the table back to Ava
     s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
     expect(total(s, 1)).toBe(0);
+    expect(publicBankruptCount(s)).toBe(1); // now that it has been played, everyone knows
     expect(checkInvariants(s)).toEqual([]);
   });
 

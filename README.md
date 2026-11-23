@@ -79,7 +79,8 @@ All three live in [`src/engine/rules.ts`](./src/engine/rules.ts).
 
 - A drawn Bankrupt goes into your hand. On your turn you can play it on another player to wipe out their
   whole bank; they can block it with a Vault Lock.
-- After the sixth Bankrupt is drawn, everyone gets one last turn, so the last ones can still be played.
+- Drawing one is secret: nothing is announced and the on-screen counter only counts Bankrupts that have been
+  played. Once the sixth has been drawn, everyone gets one last turn, so the last ones can still be played.
 
 **Piggy Bank** is the Original with a softer landing, chosen after simulating 3,000 computer-vs-computer
 games per setup:
