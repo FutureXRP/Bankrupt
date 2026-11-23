@@ -22,6 +22,7 @@ export type PlayerView = {
   drawCount: number;
   discardPile: Card[];
   bankruptDrawnCount: number;
+  bankedThisTurn: number;
   currentPlayerId: string;
   phase: Phase;
   pendingAttack?: PendingAttack;
@@ -47,6 +48,7 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
     drawCount: state.drawPile.length,
     discardPile: [...state.discardPile],
     bankruptDrawnCount: state.bankruptDrawnCount,
+    bankedThisTurn: state.bankedThisTurn,
     currentPlayerId: state.players[state.currentPlayerIndex].id,
     phase: state.phase,
     pendingAttack: state.pendingAttack ? { ...state.pendingAttack } : undefined,

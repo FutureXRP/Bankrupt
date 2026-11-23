@@ -6,13 +6,16 @@ import { casualChoice } from './casual';
 import { bestSteal, pick, toAction, type Rand } from './common';
 import { competitiveChoice } from './competitive';
 import { expertChoice } from './expert';
+import { sequencedChoice } from './sequenced';
 
 export type { Rand } from './common';
 
 /** The AI's move on its own turn. */
 export function chooseAction(view: PlayerView, difficulty: Difficulty, rand: Rand): Action {
   const option =
-    difficulty === 'expert'
+    view.rules.turnStyle === 'bank_then_attack'
+      ? sequencedChoice(view, difficulty, rand)
+      : difficulty === 'expert'
       ? expertChoice(view, rand)
       : difficulty === 'competitive'
         ? competitiveChoice(view, rand)

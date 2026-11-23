@@ -11,6 +11,18 @@ export function bankableValues(hand: readonly Card[], rules: RuleConfig): MoneyV
   );
 }
 
+/**
+ * The cards a bank keeps when it is hit by Bankrupt. Under the Piggy Bank rule
+ * that is the pile worth the least (lowest denomination on a tie) — unless the
+ * bank is a single pile, which is lost entirely.
+ */
+export function pileSavedFromBankrupt(bank: readonly Card[], rules: RuleConfig): Card[] {
+  if (rules.bankruptDestroys !== 'all_but_smallest_pile') return [];
+  const piles = MONEY_VALUES.map((v) => bank.filter((c) => c.value === v)).filter((p) => p.length > 0);
+  if (piles.length < 2) return [];
+  return piles.reduce((a, b) => (b.length * b[0].value! < a.length * a[0].value! ? b : a));
+}
+
 /** True when the player could bank or attack, which (by default) rules out discarding. */
 export function hasLegalPrimaryAction(
   hand: readonly Card[],
@@ -77,7 +89,15 @@ export function validateAction(state: GameState, action: Action): string | null 
       return null;
     }
     case 'discard': {
-      if (!player.hand.some((c) => c.id === action.cardId)) return 'That card is not in your hand.';
+      const ids = new Set(action.cardIds);
+      if (ids.size !== action.cardIds.length || ids.size === 0) return 'Choose a card to discard.';
+      if (ids.size > state.rules.stuckDiscardLimit) {
+        return state.rules.stuckDiscardLimit === 1
+          ? 'Discard exactly one card.'
+          : `Discard at most ${state.rules.stuckDiscardLimit} cards.`;
+      }
+      if (player.hand.filter((c) => ids.has(c.id)).length !== ids.size) return 'Those cards are not all in your hand.';
+      if (state.bankedThisTurn > 0) return 'You already banked this turn — attack or end your turn.';
       if (state.rules.discardOnlyWhenStuck) {
         const opponents = state.players.filter((p) => p.id !== player.id);
         if (hasLegalPrimaryAction(player.hand, opponents, state.rules)) {
@@ -87,6 +107,10 @@ export function validateAction(state: GameState, action: Action): string | null 
       return null;
     }
     case 'pass':
+      if (state.bankedThisTurn > 0) return 'End your turn instead.';
       return player.hand.length === 0 ? null : 'You can only pass with an empty hand.';
+    case 'end_turn':
+      if (state.rules.turnStyle !== 'bank_then_attack') return 'Your turn ends by itself after one action.';
+      return state.bankedThisTurn > 0 ? null : 'Bank, attack or discard before ending your turn.';
   }
 }

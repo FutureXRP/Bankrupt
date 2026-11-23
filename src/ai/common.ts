@@ -5,6 +5,8 @@ import {
   DEFENSE_FOR,
   SPECIAL_COPIES,
   bankableValues,
+  pileSavedFromBankrupt,
+  sumMoney,
   isAttackKind,
   type Action,
   type AttackKind,
@@ -19,7 +21,8 @@ export type Rand = () => number;
 export type Option =
   | { type: 'bank'; value: MoneyValue; cards: Card[]; amount: number }
   | { type: 'attack'; kind: AttackKind; card: Card; target: PublicPlayer }
-  | { type: 'discard'; card: Card }
+  | { type: 'discard'; cards: Card[] }
+  | { type: 'end_turn' }
   | { type: 'pass' };
 
 export const self = (view: PlayerView) => view.players.find((p) => p.id === view.selfId)!;
@@ -40,8 +43,13 @@ export function listOptions(view: PlayerView): Option[] {
       if (target.bank.length > 0) options.push({ type: 'attack', kind: card.kind, card, target });
     }
   }
+  if (view.bankedThisTurn > 0) {
+    // Already banked this turn: the only other choices are an attack or stopping.
+    options.push({ type: 'end_turn' });
+    return options;
+  }
   if (options.length === 0 || !view.rules.discardOnlyWhenStuck) {
-    for (const card of view.hand) options.push({ type: 'discard', card });
+    for (const card of view.hand) options.push({ type: 'discard', cards: [card] });
   }
   if (view.hand.length === 0) options.push({ type: 'pass' });
   return options;
@@ -55,7 +63,9 @@ export function toAction(view: PlayerView, option: Option): Action {
     case 'attack':
       return { type: 'attack', playerId, cardId: option.card.id, targetId: option.target.id };
     case 'discard':
-      return { type: 'discard', playerId, cardId: option.card.id };
+      return { type: 'discard', playerId, cardIds: option.cards.map((c) => c.id) };
+    case 'end_turn':
+      return { type: 'end_turn', playerId };
     case 'pass':
       return { type: 'pass', playerId };
   }
@@ -87,6 +97,11 @@ export function bestSteal(bank: readonly Card[], view: PlayerView): { cardId: st
   return best;
 }
 
+/** Dollars an unblocked Bankrupt would destroy in this bank under the current rules. */
+export function bankruptLoss(target: PublicPlayer, view: PlayerView): number {
+  return target.total - sumMoney(pileSavedFromBankrupt(target.bank, view.rules));
+}
+
 /**
  * Chance that `target` holds the defense against `kind`, estimated only from
  * what this player can see: its own hand, the discard pile and hand sizes.
@@ -95,7 +110,8 @@ export function blockChance(view: PlayerView, kind: AttackKind, target: PublicPl
   const defense = DEFENSE_FOR[kind];
   const known =
     view.hand.filter((c) => c.kind === defense).length + view.discardPile.filter((c) => c.kind === defense).length;
-  const unseenDefenses = Math.max(0, SPECIAL_COPIES - known);
+  const copies = view.players.length === 2 ? Math.min(SPECIAL_COPIES, view.rules.twoPlayerDefenseCopies) : SPECIAL_COPIES;
+  const unseenDefenses = Math.max(0, copies - known);
   const unseenCards = view.drawCount + opponents(view).reduce((sum, p) => sum + p.handCount, 0);
   if (unseenDefenses === 0 || target.handCount === 0 || unseenCards === 0) return 0;
   let noneHeld = 1;
@@ -121,6 +137,20 @@ export function keepScore(card: Card, view: PlayerView): number {
     }
   }
 }
+
+/**
+ * What a stuck player throws away. With "dump and redraw" rules this is every
+ * low-value loose money card and spare defense, so the refill has a real chance
+ * of making a pair; otherwise it is the single least useful card.
+ */
+export function chooseDiscards(view: PlayerView): Card[] {
+  const worst = leastUseful(view.hand, view);
+  if (view.rules.stuckDiscardLimit <= 1) return [worst];
+  const dump = view.hand.filter((c) => keepScore(c, view) < DUMP_BELOW);
+  const chosen = dump.length > 0 ? dump : [worst];
+  return chosen.slice(0, view.rules.stuckDiscardLimit);
+}
+export const DUMP_BELOW = 0.6;
 
 export function leastUseful(cards: readonly Card[], view: PlayerView): Card {
   return cards.reduce((a, b) => (keepScore(b, view) < keepScore(a, view) ? b : a), cards[0]);

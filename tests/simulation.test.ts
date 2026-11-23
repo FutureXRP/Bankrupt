@@ -9,6 +9,7 @@ import {
   checkInvariants,
   createGame,
   getPlayerView,
+  RULE_SETS,
   makeRng,
   validateAction,
   type Difficulty,
@@ -31,7 +32,7 @@ function playGame(seed: number, playerCount: number, rules?: Partial<RuleConfig>
   });
   let steps = 0;
   while (state.phase !== 'finished') {
-    if (++steps > 1000) throw new Error(`Seed ${seed}: game did not finish`);
+    if (++steps > 2000) throw new Error(`Seed ${seed}: game did not finish`);
     const id = actorId(state)!;
     const player = state.players.find((p) => p.id === id)!;
     const action = chooseForPhase(getPlayerView(state, id), player.difficulty!, rand);
@@ -90,6 +91,9 @@ describe('simulated games', () => {
 
   it('rule variants also finish cleanly', () => {
     const variants: Partial<RuleConfig>[] = [
+      RULE_SETS.piggy,
+      { turnStyle: 'bank_then_attack', discardOnlyWhenStuck: false },
+      { stuckDiscardLimit: 6 },
       { thiefSteals: 'random_card' },
       { thiefSteals: 'matching_group' },
       { minBankSetSize: 1 },

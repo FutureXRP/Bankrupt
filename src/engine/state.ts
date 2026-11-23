@@ -59,11 +59,13 @@ export type GameState = {
   players: Player[];
   drawPile: Card[]; // top of the deck is the END of the array
   discardPile: Card[];
+  removed: Card[]; // cards left in the box for this game (2-player variant)
   dealerIndex: number;
   currentPlayerIndex: number;
   turnNumber: number;
   phase: Phase;
   bankruptDrawnCount: number;
+  bankedThisTurn: number; // dollars the active player has banked so far this turn
   pendingAttack?: PendingAttack;
   finalRound?: { triggeredByPlayerId: string; turnsRemaining: number };
   rngState: number;
@@ -74,8 +76,10 @@ export type GameState = {
 export type Action =
   | { type: 'bank'; playerId: string; cardIds: string[] }
   | { type: 'attack'; playerId: string; cardId: string; targetId: string }
-  | { type: 'discard'; playerId: string; cardId: string }
+  | { type: 'discard'; playerId: string; cardIds: string[] }
   | { type: 'pass'; playerId: string }
+  /** bank_then_attack turns only: stop after banking without attacking. */
+  | { type: 'end_turn'; playerId: string }
   /** The defender's answer to an attack. cardId null = do not block. */
   | { type: 'defend'; playerId: string; cardId: string | null }
   /** The thief's pick from the victim's bank. */
@@ -92,6 +96,7 @@ export function cloneState(s: GameState): GameState {
     })),
     drawPile: [...s.drawPile],
     discardPile: [...s.discardPile],
+    removed: [...s.removed],
     pendingAttack: s.pendingAttack ? { ...s.pendingAttack } : undefined,
     finalRound: s.finalRound ? { ...s.finalRound } : undefined,
     actionLog: [...s.actionLog],

@@ -34,6 +34,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - The exact 80-card deck and setup: deal from the 74 non-Bankrupt cards, then shuffle the six Bankrupt cards in.
 - One action per turn: bank a matching set, play Bank Thief, play Bankrupt, or discard when stuck.
 - Vault Lock and Sheriff as one-use reactions, with a prompt when you are attacked.
+- A choice of Piggy Bank or Original rules on the setup screen (see below).
 - The Bankrupt Draw Counter, the Final Round, scoring and tie-breaks.
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
@@ -44,10 +45,33 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 Not built yet: online rooms, the step-by-step interactive tutorial (there is a rules page and a practice
 match instead), final illustrations and card-flight animations, and browser end-to-end tests in the repo.
 
+## Two rule sets
+
+The setup screen offers two versions of the game. Both live in [`src/engine/rules.ts`](./src/engine/rules.ts).
+
+**Original** is the spec's recommended playtest rules, unchanged.
+
+**Piggy Bank** (the default) is the same game with two changes, chosen after simulating 3,000
+computer-vs-computer games per setup:
+
+| Change | Why | What the simulation showed |
+|---|---|---|
+| Bankrupt wipes out the bank except the victim's smallest pile (a one-pile bank is still lost entirely) | Ending on $0 with no way back is the least fun moment in the game | Players finishing on $0 fell from about 17% to under 1%; everything else stayed about the same |
+| A 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box | With one opponent, defenses pile up and attacks rarely land | Blocked Bankrupts fell from 70% to 52%; turns with nothing to play fell from 15% to 5% |
+
+Simulations measure balance, not fun. Whether Piggy Bank rules stay is the creator's call.
+
+Two other ideas were tried and shelved; their switches remain in the rules file:
+
+- `turnStyle: 'bank_then_attack'` (bank several sets, then attack). Games became too short — about 5 turns each
+  with 4 players — and the choice between banking and attacking disappeared.
+- `stuckDiscardLimit` (a stuck player dumps several cards and redraws). It barely reduced dead turns. The
+  interface only discards one card at a time.
+
 ## Rules waiting for the creator's approval
 
-The spec marks ten decisions as still needing sign-off (§25). The game uses the recommended playtest default
-for each. The ones most likely to change are switches in [`src/engine/rules.ts`](./src/engine/rules.ts):
+The spec marks ten decisions as still needing sign-off (§25). Both rule sets use the recommended playtest
+default for each. The ones most likely to change are switches in the rules file:
 
 | # | Decision | Default in the game | How to change it |
 |---|---|---|---|
@@ -57,9 +81,9 @@ for each. The ones most likely to change are switches in [`src/engine/rules.ts`]
 | 9 | When the sixth Bankrupt is drawn | Everyone gets one final turn | `endTrigger`: `final_circuit` or `immediate` |
 | — | Declining to play a defense | Allowed | `allowDeclineDefense` |
 
-The others are fixed in the engine for now: 80 cards (#1), one action per turn (#3), Vault Lock and Sheriff
-as one-use reactions (#5, #6), refill to six at the end of the turn (#8), and ties going to the most banked
-cards and then shared (#10). A Vault Lock that stays on the table would need new engine work.
+The others are fixed in the engine for now: one action per turn (#3), Vault Lock and Sheriff as one-use
+reactions (#5, #6), refill to six at the end of the turn (#8), and ties going to the most banked cards and
+then shared (#10). A Vault Lock that stays on the table would need new engine work.
 
 The creator credit shown on the menu and Credits screen is a placeholder in
 [`src/ui/branding.ts`](./src/ui/branding.ts) until she chooses how she wants to be named.
@@ -70,7 +94,7 @@ The creator credit shown on the menu and Credits screen is a placeholder in
 src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgame, invariants
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
 src/ui/       React screens, card faces, sounds, saved settings
-tests/        The acceptance tests from spec §22, plus 3,000 simulated games
+tests/        The acceptance tests from spec §22, rule-set tests and 3,000 simulated games
 ```
 
 The engine is independent of the interface, so the same rules can later drive an online server or a mobile app.

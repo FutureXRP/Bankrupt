@@ -26,7 +26,7 @@ export function casualChoice(view: PlayerView, rand: Rand): Option {
   if (banks.length > 0) return pick(banks, rand);
   if (attacks.length > 0) return pick(attacks, rand);
   if (discards.length > 0) {
-    const money = discards.filter((o) => o.card.kind === 'money');
+    const money = discards.filter((o) => o.cards[0].kind === 'money');
     return pick(money.length > 0 ? money : discards, rand);
   }
   return { type: 'pass' };

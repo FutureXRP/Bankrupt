@@ -12,6 +12,7 @@ import {
   getPlayerView,
   hasLegalPrimaryAction,
   isAttackKind,
+  pileSavedFromBankrupt,
   scoreGame,
   sumMoney,
   validateAction,
@@ -143,7 +144,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const attackCard = myTurn && single && isAttackKind(single.kind) ? single : undefined;
   const targets = attackCard ? rivals.filter((p) => p.bank.length > 0) : [];
   const canDiscard =
-    myTurn && !!single && validateAction(state, { type: 'discard', playerId: seat.id, cardId: single.id }) === null;
+    myTurn && !!single && validateAction(state, { type: 'discard', playerId: seat.id, cardIds: [single.id] }) === null;
   const stuck = myTurn && !hasLegalPrimaryAction(seat.hand, rivals, state.rules);
 
   const toggle = (card: Card) => {
@@ -160,7 +161,8 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
 
   let hint = '';
   if (myTurn) {
-    if (seat.hand.length === 0) hint = 'You have no cards left. Pass your turn.';
+    if (state.bankedThisTurn > 0) hint = picked.length === 0 ? 'Bank more, play an attack, or end your turn.' : '';
+    else if (seat.hand.length === 0) hint = 'You have no cards left. Pass your turn.';
     else if (stuck) hint = single ? '' : 'No move available — choose one card to discard.';
     else if (picked.length === 0) hint = 'Pick matching money to bank, or pick an attack card to play.';
     else if (canBank || attackCard) hint = '';
@@ -309,11 +311,16 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
             <p className="hint">Nobody has money in the bank to attack yet.</p>
           )}
           {canDiscard && single && (
-            <button type="button" className="btn" onClick={() => dispatch({ type: 'discard', playerId: seat.id, cardId: single.id })}>
+            <button type="button" className="btn" onClick={() => dispatch({ type: 'discard', playerId: seat.id, cardIds: [single.id] })}>
               Discard {cardName(single)}
             </button>
           )}
-          {myTurn && seat.hand.length === 0 && (
+          {myTurn && state.bankedThisTurn > 0 && (
+            <button type="button" className="btn" onClick={() => dispatch({ type: 'end_turn', playerId: seat.id })}>
+              End Turn
+            </button>
+          )}
+          {myTurn && seat.hand.length === 0 && state.bankedThisTurn === 0 && (
             <button type="button" className="btn btn--primary" onClick={() => dispatch({ type: 'pass', playerId: seat.id })}>
               Pass
             </button>
@@ -419,6 +426,7 @@ function DefensePrompt({
   const pending = state.pendingAttack!;
   const defense = defender.hand.find((c) => c.kind === DEFENSE_FOR[pending.kind])!;
   const attacker = nameOf(state, pending.attackerId);
+  const saved = sumMoney(pileSavedFromBankrupt(defender.bank, state.rules));
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="defense-title">
       <div className={`dialog dialog--${pending.kind}`}>
@@ -427,7 +435,9 @@ function DefensePrompt({
         </h2>
         <p>
           {pending.kind === 'bankrupt'
-            ? `Your whole bank ($${sumMoney(defender.bank)}) will be wiped out unless you block it.`
+            ? saved > 0
+              ? `You will lose $${sumMoney(defender.bank) - saved} and keep only your smallest pile ($${saved}) unless you block it.`
+              : `Your whole bank ($${sumMoney(defender.bank)}) will be wiped out unless you block it.`
             : 'They will steal a card from your bank unless you block it.'}
         </p>
         <div className="dialog__card">

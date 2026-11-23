@@ -1,6 +1,6 @@
 // Settings and the unfinished solo game are kept in the browser's local storage.
 
-import { checkInvariants, type GameState, type SeatConfig } from '../engine';
+import { checkInvariants, type GameState, type RuleSetId, type SeatConfig } from '../engine';
 
 export type Settings = {
   aiSpeed: 'fast' | 'normal' | 'slow';
@@ -18,10 +18,10 @@ export const DEFAULT_SETTINGS: Settings = {
   textSize: 'normal',
 };
 
-export type SavedGame = { seats: SeatConfig[]; state: GameState };
+export type SavedGame = { seats: SeatConfig[]; ruleSet: RuleSetId; state: GameState };
 
 const SETTINGS_KEY = 'bankrupt.settings.v1';
-const SAVE_KEY = 'bankrupt.save.v1';
+const SAVE_KEY = 'bankrupt.save.v2';
 
 function read<T>(key: string): T | null {
   try {

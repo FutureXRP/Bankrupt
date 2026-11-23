@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createGame, randomSeed, type GameState, type SeatConfig } from '../engine';
+import { RULE_SETS, createGame, randomSeed, type GameState, type RuleSetId, type SeatConfig } from '../engine';
 import { Game } from './Game';
 import { Credits, HowToPlay, Menu, SettingsScreen, Setup } from './Screens';
 import {
@@ -24,6 +24,7 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [screen, setScreen] = useState<Screen>('menu');
   const [seats, setSeats] = useState<SeatConfig[]>(DEFAULT_SEATS);
+  const [ruleSet, setRuleSet] = useState<RuleSetId>('piggy');
   const [game, setGame] = useState<{ key: number; state: GameState } | null>(null);
   const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame);
 
@@ -33,15 +34,18 @@ export function App() {
     saveSettings(settings);
   }, [settings]);
 
-  const start = (nextSeats: SeatConfig[]) => {
+  const start = (nextSeats: SeatConfig[], nextRules: RuleSetId = ruleSet) => {
     setSeats(nextSeats);
-    setGame({ key: Date.now(), state: createGame({ players: nextSeats, seed: randomSeed() }) });
+    setRuleSet(nextRules);
+    const state = createGame({ players: nextSeats, seed: randomSeed(), rules: RULE_SETS[nextRules] });
+    setGame({ key: Date.now(), state });
     setScreen('game');
   };
 
   const resume = () => {
     if (!saved) return;
     setSeats(saved.seats);
+    setRuleSet(saved.ruleSet);
     setGame({ key: Date.now(), state: saved.state });
     setScreen('game');
   };
@@ -56,9 +60,9 @@ export function App() {
     (state: GameState) => {
       if (seats.filter((s) => !s.isAI).length !== 1) return;
       if (state.phase === 'finished') clearSavedGame();
-      else saveGame({ seats, state });
+      else saveGame({ seats, ruleSet, state });
     },
-    [seats],
+    [seats, ruleSet],
   );
 
   switch (screen) {
@@ -75,16 +79,20 @@ export function App() {
         />
       ) : null;
     case 'setup':
-      return <Setup initialSeats={seats} onStart={start} onBack={toMenu} />;
+      return <Setup initialSeats={seats} initialRuleSet={ruleSet} onStart={start} onBack={toMenu} />;
     case 'howto':
       return (
         <HowToPlay
           onBack={toMenu}
           onPractice={() =>
-            start([
-              { name: 'Player 1', isAI: false },
-              { name: 'Penny', isAI: true, difficulty: 'casual' },
-            ])
+            start(
+              [
+                { name: 'Player 1', isAI: false },
+                { name: 'Penny', isAI: true, difficulty: 'casual' },
+                { name: 'Buck', isAI: true, difficulty: 'casual' },
+              ],
+              'piggy',
+            )
           }
         />
       );

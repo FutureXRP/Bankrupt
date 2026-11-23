@@ -3,10 +3,10 @@
 
 import type { PlayerView } from '../engine';
 import {
+  bankruptLoss,
   bestSteal,
   blockChance,
-  leastUseful,
-  listOptions,
+  chooseDiscards, listOptions,
   opponents,
   self,
   type Option,
@@ -15,7 +15,7 @@ import {
 import { scoreOption } from './competitive';
 
 /** Our lead over the best rival if `option` works (or the current lead if it is blocked). */
-function expectedLead(view: PlayerView, option: Option): number {
+export function expectedLead(view: PlayerView, option: Option): number {
   const me = self(view).total;
   const rivals = opponents(view);
   const lead = (mine: number, changed?: { id: string; total: number }) =>
@@ -27,7 +27,8 @@ function expectedLead(view: PlayerView, option: Option): number {
 
   const chance = 1 - blockChance(view, option.kind, option.target);
   if (option.kind === 'bankrupt') {
-    return chance * lead(me, { id: option.target.id, total: 0 }) + (1 - chance) * now;
+    const left = option.target.total - bankruptLoss(option.target, view);
+    return chance * lead(me, { id: option.target.id, total: left }) + (1 - chance) * now;
   }
   const { gain } = bestSteal(option.target.bank, view);
   const after = lead(me + gain, { id: option.target.id, total: option.target.total - gain });
@@ -38,7 +39,7 @@ export function expertChoice(view: PlayerView, rand: Rand): Option {
   const options = listOptions(view);
   const plays = options.filter((o) => o.type === 'bank' || o.type === 'attack');
   if (plays.length === 0) {
-    if (view.hand.length > 0) return { type: 'discard', card: leastUseful(view.hand, view) };
+    if (view.hand.length > 0) return { type: 'discard', cards: chooseDiscards(view) };
     return { type: 'pass' };
   }
 

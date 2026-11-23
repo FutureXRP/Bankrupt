@@ -1,7 +1,7 @@
 // Menu, setup, how-to-play, settings and credits screens (spec §15.1, §15.2, §20).
 
 import { useState, type ReactNode } from 'react';
-import type { Card, Difficulty, SeatConfig } from '../engine';
+import type { Card, Difficulty, RuleSetId, SeatConfig } from '../engine';
 import { CREATOR_CREDIT, TAGLINE } from './branding';
 import { CardView } from './Card';
 import type { Settings } from './storage';
@@ -78,14 +78,17 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onNavigate }: MenuP
 
 export function Setup({
   initialSeats,
+  initialRuleSet,
   onStart,
   onBack,
 }: {
   initialSeats: SeatConfig[];
-  onStart: (seats: SeatConfig[]) => void;
+  initialRuleSet: RuleSetId;
+  onStart: (seats: SeatConfig[], ruleSet: RuleSetId) => void;
   onBack: () => void;
 }) {
   const [seats, setSeats] = useState<SeatConfig[]>(initialSeats);
+  const [ruleSet, setRuleSet] = useState<RuleSetId>(initialRuleSet);
 
   const setCount = (count: number) =>
     setSeats((current) => {
@@ -163,12 +166,39 @@ export function Setup({
         ))}
       </ul>
 
+      <fieldset className="field">
+        <legend>Rules</legend>
+        <div className="segmented">
+          <button
+            type="button"
+            className={`btn${ruleSet === 'piggy' ? ' btn--primary' : ''}`}
+            aria-pressed={ruleSet === 'piggy'}
+            onClick={() => setRuleSet('piggy')}
+          >
+            Piggy Bank
+          </button>
+          <button
+            type="button"
+            className={`btn${ruleSet === 'original' ? ' btn--primary' : ''}`}
+            aria-pressed={ruleSet === 'original'}
+            onClick={() => setRuleSet('original')}
+          >
+            Original
+          </button>
+        </div>
+        <p className="note">
+          {ruleSet === 'piggy'
+            ? 'Bankrupt wipes out your bank but you keep your smallest pile. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.'
+            : 'The first rules: Bankrupt wipes out the whole bank, and every game uses all 80 cards.'}
+        </p>
+      </fieldset>
+
       {seats.filter((s) => !s.isAI).length > 1 && (
         <p className="note">Pass-and-play: the game hides each hand and asks you to pass the device between turns.</p>
       )}
       {duplicate && <p className="note note--warn">Give every player a different name.</p>}
 
-      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned)}>
+      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet)}>
         Start Game
       </button>
     </Page>
@@ -180,7 +210,7 @@ const REFERENCE: { card: Card; text: string }[] = [
   { card: { id: 'ref-25', kind: 'money', value: 25 }, text: '14 in the deck.' },
   { card: { id: 'ref-50', kind: 'money', value: 50 }, text: '14 in the deck.' },
   { card: { id: 'ref-100', kind: 'money', value: 100 }, text: '14 in the deck.' },
-  { card: { id: 'ref-b', kind: 'bankrupt' }, text: "Empties one opponent's whole bank. Blocked by Vault Lock. 6 in the deck." },
+  { card: { id: 'ref-b', kind: 'bankrupt' }, text: "Wipes out an opponent's bank — they keep only their smallest pile. Blocked by Vault Lock. 6 in the deck." },
   { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Play it when you are hit by Bankrupt to cancel it. Used once. 6 in the deck.' },
   { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the deck." },
   { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the deck.' },
@@ -204,7 +234,7 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
             play <strong>Bank Thief</strong> to steal one money card from an opponent's bank, <em>or</em>
           </li>
           <li>
-            play <strong>Bankrupt</strong> to wipe out an opponent's whole bank.
+            play <strong>Bankrupt</strong> to wipe out an opponent's bank. They keep only their smallest pile.
           </li>
           <li>If you cannot do any of those, discard one card.</li>
         </ul>
@@ -223,6 +253,17 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           cards wins; if that ties too, the win is shared.
         </p>
 
+        <h2>Two ways to play</h2>
+        <p>
+          <strong>Piggy Bank rules</strong> (the ones described here): when you are bankrupted you keep your smallest
+          pile — the one worth the least. If your bank is only one pile, it is all gone. In a 2-player game, 2 Vault
+          Locks and 2 Sheriffs are left in the box.
+        </p>
+        <p>
+          <strong>Original rules:</strong> Bankrupt wipes out the whole bank, and every game uses all 80 cards. Pick
+          the rules on the Game Setup screen.
+        </p>
+
         <h2>The cards</h2>
       </div>
       <ul className="reference">
@@ -234,8 +275,8 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
         ))}
       </ul>
       <p className="note">
-        These are playtest rules. A few details — like exactly how much Bank Thief steals — are still waiting for the
-        creator's approval.
+        These are playtest rules. The creator has the final say on all of them — including whether Piggy Bank rules
+        stay.
       </p>
       <button type="button" className="btn btn--primary btn--wide" onClick={onPractice}>
         Play a practice match

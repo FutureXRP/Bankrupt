@@ -21,6 +21,22 @@ export type RuleConfig = {
   endTrigger: 'final_circuit' | 'immediate';
   /** §15.3 — may a defender holding the right defense choose not to play it? */
   allowDeclineDefense: boolean;
+  /**
+   * §25 #3 — how much a player may do on a turn.
+   * one_action: exactly one of bank / attack / discard.
+   * bank_then_attack: bank any number of matching sets, then optionally finish
+   * with one attack. A player who does neither discards one card.
+   */
+  turnStyle: 'one_action' | 'bank_then_attack';
+  /** What an unblocked Bankrupt destroys: the whole bank, or everything except the victim's smallest pile. */
+  bankruptDestroys: 'all' | 'all_but_smallest_pile';
+  /**
+   * How many cards a stuck player may discard at once (they then refill as usual).
+   * 1 = exactly one card (spec §9). 6 = "dump and redraw" as many as they like.
+   */
+  stuckDiscardLimit: number;
+  /** Copies of Vault Lock and of Sheriff used in a 2-player game (the rest stay in the box). */
+  twoPlayerDefenseCopies: number;
   /** Hand size (recovered rule: six). */
   handSize: number;
 };
@@ -31,5 +47,23 @@ export const DEFAULT_RULES: RuleConfig = {
   discardOnlyWhenStuck: true,
   endTrigger: 'final_circuit',
   allowDeclineDefense: true,
+  turnStyle: 'one_action',
+  bankruptDestroys: 'all',
+  stuckDiscardLimit: 1,
+  twoPlayerDefenseCopies: 6,
   handSize: 6,
 };
+
+/**
+ * The two rule sets offered on the setup screen.
+ * original: the spec's recommended playtest rules, unchanged.
+ * piggy: the same game with two changes chosen from simulated play —
+ *   1. Bankrupt leaves the victim their smallest pile (almost nobody ends on $0);
+ *   2. a 2-player game uses 4 Vault Locks and 4 Sheriffs, so attacks land more often.
+ */
+export const RULE_SETS = {
+  piggy: { ...DEFAULT_RULES, bankruptDestroys: 'all_but_smallest_pile', twoPlayerDefenseCopies: 4 },
+  original: DEFAULT_RULES,
+} as const satisfies Record<string, RuleConfig>;
+
+export type RuleSetId = keyof typeof RULE_SETS;

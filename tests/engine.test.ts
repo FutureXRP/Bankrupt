@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MONEY_VALUES,
+  RULE_SETS,
   RuleError,
   SPECIAL_KINDS,
   TOTAL_MONEY_VALUE,
@@ -184,13 +185,13 @@ describe('discarding, drawing and the countdown', () => {
     give(s, 0, 'hand', '$5', '$25', '$50', '$100', 'sheriff', 'bankrupt'); // no pair, no bank to attack
     stackTop(s, '$5');
     const five = handIds(s, 0, '$5')[0];
-    s = applyAction(s, { type: 'discard', playerId: 'p1', cardId: five });
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: [five] });
     expect(s.players[0].hand).toHaveLength(6);
     expect(s.discardPile.map((c) => c.id)).toEqual([five]);
 
     const t = blankGame();
     give(t, 0, 'hand', '$5', '$5', 'sheriff');
-    expect(validateAction(t, { type: 'discard', playerId: 'p1', cardId: handIds(t, 0, 'sheriff')[0] })).toMatch(
+    expect(validateAction(t, { type: 'discard', playerId: 'p1', cardIds: handIds(t, 0, 'sheriff') })).toMatch(
       /no other move/,
     );
   });
@@ -309,5 +310,82 @@ describe('rule variants (spec §25)', () => {
     give(s, 0, 'hand', '$100');
     s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$100') });
     expect(total(s, 0)).toBe(100);
+  });
+});
+
+describe('Piggy Bank rule set', () => {
+  it('Bankrupt leaves the victim their smallest pile', () => {
+    let s = blankGame(3, RULE_SETS.piggy);
+    give(s, 0, 'hand', 'bankrupt');
+    give(s, 1, 'bank', '$100', '$100', '$25', '$25', '$5', '$5', '$5'); // piles worth $200, $50, $15
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
+    expect(total(s, 1)).toBe(15);
+    expect(s.players[1].bank.every((c) => c.value === 5)).toBe(true);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('a one-pile bank is still wiped out completely', () => {
+    let s = blankGame(3, RULE_SETS.piggy);
+    give(s, 0, 'hand', 'bankrupt');
+    give(s, 1, 'bank', '$50', '$50', '$50');
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
+    expect(total(s, 1)).toBe(0);
+  });
+
+  it('keeps the lower denomination when two piles are worth the same', () => {
+    let s = blankGame(3, RULE_SETS.piggy);
+    give(s, 0, 'hand', 'bankrupt');
+    give(s, 1, 'bank', '$50', '$25', '$25'); // $50 and $50
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
+    expect(s.players[1].bank.map((c) => c.value)).toEqual([25, 25]);
+  });
+
+  it('a 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box', () => {
+    const two = createGame({ players: seats(2), seed: 3, rules: RULE_SETS.piggy });
+    expect(two.removed.map((c) => c.kind).sort()).toEqual(['sheriff', 'sheriff', 'vault_lock', 'vault_lock']);
+    const inPlay = [...two.drawPile, ...two.players.flatMap((p) => p.hand)];
+    expect(inPlay).toHaveLength(76);
+    expect(inPlay.filter((c) => c.kind === 'vault_lock')).toHaveLength(4);
+    expect(inPlay.filter((c) => c.kind === 'bankrupt')).toHaveLength(6);
+    expect(checkInvariants(two)).toEqual([]);
+
+    const three = createGame({ players: seats(3), seed: 3, rules: RULE_SETS.piggy });
+    expect(three.removed).toHaveLength(0);
+  });
+
+  it('the original rule set is the spec default', () => {
+    expect(RULE_SETS.original).toMatchObject({ bankruptDestroys: 'all', twoPlayerDefenseCopies: 6 });
+  });
+});
+
+describe('tested-and-shelved variants still work', () => {
+  it('bank_then_attack: bank several sets, then end the turn or attack', () => {
+    let s = blankGame(2, { turnStyle: 'bank_then_attack', discardOnlyWhenStuck: false });
+    give(s, 0, 'hand', '$5', '$5', '$50', '$50', 'bank_thief', 'sheriff');
+    give(s, 1, 'bank', '$100');
+    expect(validateAction(s, { type: 'end_turn', playerId: 'p1' })).not.toBeNull();
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    expect(s.currentPlayerIndex).toBe(0);
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$50') });
+    expect(s.players[0].stats.largestBank).toBe(110);
+    expect(validateAction(s, { type: 'discard', playerId: 'p1', cardIds: handIds(s, 0, 'sheriff') })).not.toBeNull();
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
+    expect(total(s, 0)).toBe(210);
+    expect(s.currentPlayerIndex).toBe(1);
+    expect(s.bankedThisTurn).toBe(0);
+  });
+
+  it('stuckDiscardLimit lets a stuck player dump several cards and redraw', () => {
+    let s = blankGame(2, { stuckDiscardLimit: 6 });
+    give(s, 0, 'hand', '$5', '$25', '$50', '$100', 'sheriff', 'vault_lock');
+    const dump = [...handIds(s, 0, '$5'), ...handIds(s, 0, '$25'), ...handIds(s, 0, '$50')];
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: dump });
+    expect(s.discardPile).toHaveLength(3);
+    expect(s.players[0].hand).toHaveLength(6);
+
+    const one = blankGame(2);
+    give(one, 0, 'hand', '$5', '$25');
+    const both = one.players[0].hand.map((c) => c.id);
+    expect(validateAction(one, { type: 'discard', playerId: 'p1', cardIds: both })).toMatch(/exactly one/);
   });
 });

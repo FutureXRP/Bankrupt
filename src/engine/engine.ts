@@ -3,7 +3,7 @@
 import { BANKRUPT_TOTAL, CARD_NAMES, DEFENSE_FOR, cardName, sumMoney, type AttackKind, type Card } from './cards';
 import { nextRandom } from './rng';
 import { cloneState, type Action, type GameState, type LogEntry, type Player } from './state';
-import { validateAction } from './validators';
+import { pileSavedFromBankrupt, validateAction } from './validators';
 
 export class RuleError extends Error {}
 
@@ -33,9 +33,10 @@ export function applyAction(prev: GameState, action: Action): GameState {
       player.hand = player.hand.filter((c) => !ids.has(c.id));
       player.bank.push(...cards);
       const amount = sumMoney(cards);
-      player.stats.largestBank = Math.max(player.stats.largestBank, amount);
+      s.bankedThisTurn += amount;
+      player.stats.largestBank = Math.max(player.stats.largestBank, s.bankedThisTurn);
       log(s, 'bank', `${player.name} banked ${cards.length} × $${cards[0].value} (+$${amount}).`, player.id);
-      endTurn(s);
+      if (s.rules.turnStyle === 'one_action') endTurn(s);
       break;
     }
     case 'attack': {
@@ -79,14 +80,17 @@ export function applyAction(prev: GameState, action: Action): GameState {
       completeTheft(s, action.cardId);
       break;
     case 'discard': {
-      const card = takeFromHand(player, action.cardId);
-      s.discardPile.push(card);
-      log(s, 'discard', `${player.name} discarded ${cardName(card)}.`, player.id);
+      const cards = action.cardIds.map((id) => takeFromHand(player, id));
+      s.discardPile.push(...cards);
+      log(s, 'discard', `${player.name} discarded ${cards.map(cardName).join(', ')}.`, player.id);
       endTurn(s);
       break;
     }
     case 'pass':
       log(s, 'pass', `${player.name} has no cards and passes.`, player.id);
+      endTurn(s);
+      break;
+    case 'end_turn':
       endTurn(s);
       break;
   }
@@ -99,10 +103,19 @@ function resolveUnblocked(s: GameState) {
   const target = byId(s, pending.targetId);
 
   if (pending.kind === 'bankrupt') {
-    const lost = sumMoney(target.bank);
-    s.discardPile.push(...target.bank);
-    target.bank = [];
-    log(s, 'bankrupt', `${attacker.name} bankrupted ${target.name} — $${lost} wiped out!`, attacker.id, target.id);
+    const kept = pileSavedFromBankrupt(target.bank, s.rules);
+    const destroyed = target.bank.filter((c) => !kept.includes(c));
+    const lost = sumMoney(destroyed);
+    s.discardPile.push(...destroyed);
+    target.bank = kept;
+    const saved = kept.length > 0 ? ` They keep $${sumMoney(kept)}.` : '';
+    log(
+      s,
+      'bankrupt',
+      `${attacker.name} bankrupted ${target.name} — $${lost} wiped out!${saved}`,
+      attacker.id,
+      target.id,
+    );
     endTurn(s);
     return;
   }
@@ -141,6 +154,7 @@ function completeTheft(s: GameState, cardId: string) {
 /** Refill the active player's hand, check the countdown, and pass the turn. */
 function endTurn(s: GameState) {
   s.pendingAttack = undefined;
+  s.bankedThisTurn = 0;
   const player = s.players[s.currentPlayerIndex];
   const wasFinalTurn = !!s.finalRound;
 

@@ -1,7 +1,7 @@
 // Setup (spec §4): separate the Bankrupt cards, deal from the other 74,
 // then shuffle the six Bankrupt cards into what is left.
 
-import { buildDeck } from './cards';
+import { SPECIAL_COPIES, buildDeck } from './cards';
 import { nextRandom, shuffled } from './rng';
 import { DEFAULT_RULES, type RuleConfig } from './rules';
 import type { Difficulty, GameState, Player } from './state';
@@ -22,7 +22,14 @@ export function createGame(options: GameOptions): GameState {
 
   const deck = buildDeck();
   const bankrupts = deck.filter((c) => c.kind === 'bankrupt');
-  const others = deck.filter((c) => c.kind !== 'bankrupt');
+  const removed: typeof deck = [];
+  let others = deck.filter((c) => c.kind !== 'bankrupt');
+  if (count === 2 && rules.twoPlayerDefenseCopies < SPECIAL_COPIES) {
+    for (const kind of ['vault_lock', 'sheriff'] as const) {
+      removed.push(...others.filter((c) => c.kind === kind).slice(rules.twoPlayerDefenseCopies));
+    }
+    others = others.filter((c) => !removed.includes(c));
+  }
 
   let rngState = options.seed >>> 0;
   const first = shuffled(others, rngState);
@@ -59,11 +66,13 @@ export function createGame(options: GameOptions): GameState {
     players,
     drawPile: second.items,
     discardPile: [],
+    removed,
     dealerIndex,
     currentPlayerIndex,
     turnNumber: 1,
     phase: 'action',
     bankruptDrawnCount: 0,
+    bankedThisTurn: 0,
     rngState,
     actionLog: [
       {

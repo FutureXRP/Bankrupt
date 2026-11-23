@@ -7,7 +7,7 @@ const KNOWN_IDS = new Set(buildDeck().map((c) => c.id));
 
 export function checkInvariants(state: GameState): string[] {
   const problems: string[] = [];
-  const zones = [state.drawPile, state.discardPile, ...state.players.flatMap((p) => [p.hand, p.bank])];
+  const zones = [state.drawPile, state.discardPile, state.removed, ...state.players.flatMap((p) => [p.hand, p.bank])];
   const all = zones.flat();
 
   const seen = new Set<string>();
