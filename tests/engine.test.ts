@@ -751,15 +751,17 @@ describe('power-up shop', () => {
 describe('Bank Swap card', () => {
   const SWAP = { ...RULE_SETS.original, bankSwapCards: 2 };
 
-  it('adds 2 cards to the basic deck, scaled with the table', () => {
-    for (const [count, swaps, cards] of [[2, 2, 82], [3, 3, 120], [4, 4, 158]] as const) {
+  it('adds 2 Bank Swaps and 2 Lawyers to the basic deck, scaled with the table', () => {
+    for (const [count, swaps, cards] of [[2, 2, 84], [3, 3, 123], [4, 4, 162]] as const) {
       const s = createGame({ players: seats(count), seed: 2, rules: SWAP });
       const all = [...s.drawPile, ...s.players.flatMap((p) => p.hand)];
       expect(all.filter((c) => c.kind === 'bank_swap')).toHaveLength(swaps);
+      expect(all.filter((c) => c.kind === 'lawyer')).toHaveLength(swaps);
       expect(all).toHaveLength(cards);
       expect(checkInvariants(s)).toEqual([]);
     }
-    expect(createGame({ players: seats(2), seed: 2, rules: RULE_SETS.original }).drawPile.some((c) => c.kind === 'bank_swap')).toBe(false);
+    const plain = createGame({ players: seats(2), seed: 2, rules: RULE_SETS.original });
+    expect([...plain.drawPile, ...plain.players.flatMap((p) => p.hand)].some((c) => c.kind === 'bank_swap' || c.kind === 'lawyer')).toBe(false);
   });
 
   const setup = () => {
@@ -781,15 +783,32 @@ describe('Bank Swap card', () => {
     expect(checkInvariants(s)).toEqual([]);
   });
 
-  it('is stopped by a Sheriff, not a Vault Lock', () => {
+  it('is stopped only by a Lawyer — not a Sheriff or a Vault Lock', () => {
     let s = setup();
-    give(s, 1, 'hand', 'sheriff', 'vault_lock');
+    give(s, 1, 'hand', 'sheriff', 'vault_lock', 'lawyer');
     s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_swap')[0], targetId: 'p2' });
     expect(s.phase).toBe('reaction');
     expect(validateAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'vault_lock')[0] })).not.toBeNull();
-    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] });
+    expect(validateAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] })).not.toBeNull();
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'lawyer')[0] });
     expect(bankTotal(s.players[0])).toBe(25);
     expect(bankTotal(s.players[1])).toBe(250);
+    expect(s.discardPile.some((c) => c.kind === 'lawyer')).toBe(true);
+  });
+
+  it('a Sheriff alone does not stop a Bank Swap, and a Lawyer does not stop a Bank Thief', () => {
+    let s = setup();
+    give(s, 1, 'hand', 'sheriff');
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_swap')[0], targetId: 'p2' });
+    expect(s.phase).toBe('action'); // no window to block: the swap just happens
+    expect(bankTotal(s.players[0])).toBe(250);
+
+    let t = blankGame(3, SWAP);
+    give(t, 0, 'hand', 'bank_thief');
+    give(t, 1, 'bank', '$50');
+    give(t, 1, 'hand', 'lawyer');
+    t = applyAction(t, { type: 'attack', playerId: 'p1', cardId: handIds(t, 0, 'bank_thief')[0], targetId: 'p2' });
+    expect(bankTotal(t.players[1])).toBe(0);
   });
 
   it('never has to be played: holding only a Bank Swap, you may discard instead', () => {

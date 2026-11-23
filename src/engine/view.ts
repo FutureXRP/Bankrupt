@@ -22,6 +22,8 @@ export type PlayerView = {
   rules: RuleConfig;
   /** Copies of each defense card in play this game (public knowledge, like the box contents). */
   defenseCopies: number;
+  /** Copies of the Lawyer card in play this game. */
+  lawyerCopies: number;
   hand: Card[];
   players: PublicPlayer[]; // everyone, in seat order, including self
   drawCount: number;
@@ -59,6 +61,7 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
       state.players.length === 2
         ? Math.min(state.deck.specialCopies, state.rules.twoPlayerDefenseCopies)
         : state.deck.specialCopies,
+    lawyerCopies: state.deck.swapCopies,
     hand: [...self.hand],
     players: state.players.map((p) => ({
       id: p.id,

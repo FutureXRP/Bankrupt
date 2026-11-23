@@ -113,7 +113,8 @@ export function blockChance(view: PlayerView, kind: AttackKind, target: PublicPl
   const defense = DEFENSE_FOR[kind];
   const known =
     view.hand.filter((c) => c.kind === defense).length + view.discardPile.filter((c) => c.kind === defense).length;
-  const unseenDefenses = Math.max(0, view.defenseCopies - known);
+  const copies = defense === 'lawyer' ? view.lawyerCopies : view.defenseCopies;
+  const unseenDefenses = Math.max(0, copies - known);
   const unseenCards = view.drawCount + opponents(view).reduce((sum, p) => sum + p.handCount, 0);
   if (unseenDefenses === 0 || target.handCount === 0 || unseenCards === 0) return 0;
   let noneHeld = 1;

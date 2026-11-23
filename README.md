@@ -39,7 +39,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
 - A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
-- Two optional extras, both on by default: a power-up shop and Bank Swap cards (see below).
+- Two optional extras, both on by default: a power-up shop, and Bank Swap and Lawyer cards (see below).
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
 - Play with Friends: one player hosts and gets an invite code; up to three others join from their own
@@ -131,9 +131,15 @@ overpayment returned as cash. Cash (from change, doubled matches and insurance p
 and is lost to Bankrupt, but an ordinary Bank Thief can only take cards. Prices and effects live in
 [`src/engine/shop.ts`](./src/engine/shop.ts). The prices are first guesses and have not been balance-tested.
 
-**Bank Swap cards.** Two extra cards in the basic deck (three with 3 players, four with 4). Play one on
-another player to trade whole banks, cash included. A Sheriff stops it. Holding one never forces you to play
-it.
+**Bank Swap and Lawyer cards.** Play a Bank Swap on another player to trade whole banks, cash included. Only
+a Lawyer stops it (Sheriff does not). Holding a Bank Swap never forces you to play it. The extra adds the same
+number of each card:
+
+| Players | Bank Swaps | Lawyers | Deck with this extra on |
+|---|---|---|---|
+| 2 | 2 | 2 | 84 cards |
+| 3 | 3 | 3 | 123 cards |
+| 4 | 4 | 4 | 162 cards |
 
 ## Rules still to confirm with the creator
 

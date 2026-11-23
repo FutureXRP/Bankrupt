@@ -62,7 +62,8 @@ export type RuleConfig = {
   refillAfterDefense: boolean;
   /**
    * Bank Swap cards in the basic deck (0 = none; scaled up with the deck). Played
-   * on another player to trade whole banks; a Sheriff stops it.
+   * on another player to trade whole banks. The same number of Lawyer cards is
+   * added; a Lawyer is the only card that stops a Bank Swap.
    */
   bankSwapCards: number;
   /** Power-up shop: spend banked money on one power-up at the start of your turn. */
@@ -121,7 +122,7 @@ export type Extras = { shop: boolean; bankSwap: boolean };
 
 export const DEFAULT_EXTRAS: Extras = { shop: true, bankSwap: true };
 
-/** Bank Swap cards in the basic deck when that extra is on. */
+/** Bank Swap cards (and, separately, Lawyer cards) in the basic deck when that extra is on. */
 export const BANK_SWAP_CARDS = 2;
 
 export function rulesFor(ruleSet: RuleSetId, extras: Extras): RuleConfig {

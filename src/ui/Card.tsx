@@ -63,6 +63,16 @@ ICONS.bank_swap = (
   </svg>
 );
 
+ICONS.lawyer = (
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <path d="M24 6v34" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    <path d="M8 13h32" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    <path d="M14 43h20" fill="none" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
+    <path d="m10 14-6 13a6.5 6.5 0 0 0 12 0zM38 14l-6 13a6.5 6.5 0 0 0 12 0z" fill="currentColor" />
+    <circle cx="24" cy="7" r="3.4" fill="currentColor" />
+  </svg>
+);
+
 const SUBTITLE: Record<CardKind, string> = {
   money: 'MONEY',
   bankrupt: 'ATTACK',
@@ -70,6 +80,7 @@ const SUBTITLE: Record<CardKind, string> = {
   bank_thief: 'ATTACK',
   sheriff: 'DEFENSE',
   bank_swap: 'ATTACK',
+  lawyer: 'DEFENSE',
 };
 
 type Props = {

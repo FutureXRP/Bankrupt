@@ -130,6 +130,7 @@ button.card:hover { transform: translateY(-4%); }
 .card--sheriff { --c: #3fd6c6; --c2: #0c7d76; }
 .card--bank_swap { --c: #ff7ac3; --c2: #b3247a; }
 .card--bank_swap .card__title { font-size: 15cqw; }
+.card--lawyer { --c: #c9a26b; --c2: #6e4a1d; }
 .card--back .card__face { background: repeating-linear-gradient(45deg, #26397a 0 8cqw, #1c2b5e 8cqw 16cqw); border-color: var(--gold); animation: none; }
 .card__backmark { font-size: 46cqw; font-weight: 900; color: var(--gold); }
 .card--sm .card__sub, .card--xs .card__backmark { display: none; }

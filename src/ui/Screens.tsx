@@ -71,7 +71,8 @@ export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (
           onChange={(e) => onChange({ ...extras, bankSwap: e.target.checked })}
         />
         <span>
-          <strong>Bank Swap cards</strong> — a card that trades your whole bank with another player's.
+          <strong>Bank Swap and Lawyer cards</strong> — Bank Swap trades your whole bank with another player's;
+          only a Lawyer can block it.
         </span>
       </label>
     </fieldset>
@@ -79,7 +80,7 @@ export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (
 }
 
 export function extrasSummary(extras: Extras): string {
-  const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap cards'].filter(Boolean);
+  const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap and Lawyer cards'].filter(Boolean);
   return on.length > 0 ? on.join(' and ') : 'none';
 }
 
@@ -260,10 +261,14 @@ const REFERENCE: { card: Card; text: string }[] = [
   { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. 6 hidden in the deck.' },
   { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the basic deck.' },
   { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the basic deck." },
-  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief or Bank Swap comes for you to cancel it. Used once. 6 in the basic deck.' },
+  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the basic deck.' },
   {
     card: { id: 'ref-w', kind: 'bank_swap' },
-    text: `Extra card. Play it on another player to trade your whole bank for theirs. Blocked by Sheriff. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
+    text: `Extra card. Play it on another player to trade your whole bank for theirs. Blocked by Lawyer. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
+  },
+  {
+    card: { id: 'ref-l', kind: 'lawyer' },
+    text: `Extra card. Play it when someone plays Bank Swap on you to cancel it. Used once. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
   },
 ];
 
@@ -330,18 +335,19 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           winning and is lost if you go bankrupt, but an ordinary Bank Thief can only take cards.
         </p>
 
-        <h2>Extra: Bank Swap cards</h2>
+        <h2>Extra: Bank Swap and Lawyer cards</h2>
         <p>
-          When switched on, a few Bank Swap cards are shuffled into the deck. Play one on another player to trade your
-          whole bank for theirs — perfect when you are behind. They can stop it with a Sheriff. You never have to play
-          it: holding one does not stop you discarding.
+          When switched on, Bank Swap cards and the same number of Lawyer cards are shuffled into the deck (2 of each
+          with 2 players, 3 with 3, 4 with 4). Play a Bank Swap on another player to trade your whole bank for theirs
+          — perfect when you are behind. Only a <strong>Lawyer</strong> can stop it; a Sheriff cannot.
         </p>
 
         <h2>Bigger table, bigger deck</h2>
         <p>
           There are always exactly 6 Bankrupt cards. With 2 players the deck is the basic 80 cards. With 3 players
           there are one and a half times as many of the other cards (117 in all), and with 4 players twice as many
-          (154 in all), so the game lasts about as long however many are playing.
+          (154 in all), so the game lasts about as long however many are playing. Bank Swap and Lawyer cards add 4,
+          6 or 8 more.
         </p>
 
         <h2>Bankrupt Attack mode</h2>
