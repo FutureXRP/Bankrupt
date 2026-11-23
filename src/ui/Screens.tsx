@@ -1,7 +1,7 @@
 // Menu, setup, how-to-play, settings and credits screens (spec §15.1, §15.2, §20).
 
 import { useState, type ReactNode } from 'react';
-import { BANK_SWAP_CARDS, SHOP_ITEMS, type Card, type Difficulty, type Extras, type RuleSetId, type SeatConfig } from '../engine';
+import { BANK_SWAP_CARDS, HAND_SIZE, SHOP_ITEMS, type Card, type Difficulty, type Extras, type RuleSetId, type SeatConfig } from '../engine';
 import { CREATOR_CREDIT, TAGLINE } from './branding';
 import { CardView } from './Card';
 import type { Settings } from './storage';
@@ -293,7 +293,10 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
             Or <strong>discard</strong> one card — you can always do this, even if you could have played something.
           </li>
         </ul>
-        <p>Then you draw back up to 6 cards. Discarded cards never come back.</p>
+        <p>
+          Everyone starts with {HAND_SIZE} cards. After your turn you draw back up to {HAND_SIZE}. Discarded cards never
+          come back.
+        </p>
 
         <h2>Watch out — Bankrupt!</h2>
         <p>
@@ -451,7 +454,7 @@ export function Credits({ onBack }: { onBack: () => void }) {
         <p className="credits__creator">
           BANKRUPT was invented by <strong>{CREATOR_CREDIT}</strong>.
         </p>
-        <p>The cards, the six-card hand and the Bankrupt trap are all from the original game.</p>
+        <p>The cards, the matching rule and the Bankrupt trap are all from the original game.</p>
         <p>
           BANKRUPT uses pretend money only. There is no betting and nothing to buy.
         </p>

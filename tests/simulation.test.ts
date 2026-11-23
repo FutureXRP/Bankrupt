@@ -73,7 +73,7 @@ describe('AI fairness', () => {
     }
     for (const card of state.players[1].hand) expect(sent).toContain(`"${card.id}"`);
     const masked = maskStateFor(state, 'p2');
-    expect(masked.players.map((p) => p.hand.length)).toEqual([6, 6, 6]);
+    expect(masked.players.map((p) => p.hand.length)).toEqual([10, 10, 10]);
     expect(masked.drawPile).toHaveLength(state.drawPile.length);
     // A guest can still check their own moves against the masked copy.
     expect(validateAction(masked, { type: 'pass', playerId: 'p2' })).toBe(validateAction(state, { type: 'pass', playerId: 'p2' }));

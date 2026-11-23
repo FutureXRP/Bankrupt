@@ -68,7 +68,7 @@ export type RuleConfig = {
   bankSwapCards: number;
   /** Power-up shop: spend banked money on one power-up at the start of your turn. */
   shop: boolean;
-  /** Hand size (recovered rule: six). */
+  /** Cards each player is dealt and refills to. The game uses HAND_SIZE (ten); the basic rules object keeps six. */
   handSize: number;
 };
 
@@ -103,16 +103,20 @@ export const DEFAULT_RULES: RuleConfig = {
  *   another player, who can block with Vault Lock. After the sixth Bankrupt is
  *   drawn everyone gets one last turn, so the last ones can still be played.
  */
+/** Every rule set deals ten cards and refills to ten (the creator's rule; it was six at first). */
+export const HAND_SIZE = 10;
+
+const TABLE_RULES: RuleConfig = { ...DEFAULT_RULES, deckScale: 'by_players', handSize: HAND_SIZE };
+
 export const RULE_SETS = {
-  original: { ...DEFAULT_RULES, deckScale: 'by_players' },
+  original: TABLE_RULES,
   piggy: {
-    ...DEFAULT_RULES,
-    deckScale: 'by_players',
+    ...TABLE_RULES,
     bankruptDestroys: 'all_but_smallest_pile',
     endTrigger: 'final_circuit',
     twoPlayerDefenseCopies: 4,
   },
-  attack: { ...DEFAULT_RULES, deckScale: 'by_players', bankruptMode: 'attack', endTrigger: 'final_circuit' },
+  attack: { ...TABLE_RULES, bankruptMode: 'attack', endTrigger: 'final_circuit' },
 } as const satisfies Record<string, RuleConfig>;
 
 export type RuleSetId = keyof typeof RULE_SETS;

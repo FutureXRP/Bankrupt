@@ -580,6 +580,21 @@ describe('Piggy Bank rule set', () => {
     expect(plain.drawPile.length + 24).toBe(80);
   });
 
+  it('every rule set deals ten cards and refills to ten', () => {
+    for (const rules of [RULE_SETS.original, RULE_SETS.piggy, RULE_SETS.attack]) {
+      for (const count of [2, 3, 4]) {
+        const s = createGame({ players: seats(count), seed: 11, rules });
+        expect(s.players.every((p) => p.hand.length === 10)).toBe(true);
+        expect(s.players.some((p) => p.hand.some((c) => c.kind === 'bankrupt'))).toBe(false);
+        expect(checkInvariants(s)).toEqual([]);
+      }
+    }
+    let s = blankGame(2, RULE_SETS.original);
+    give(s, 0, 'hand', '$5', '$5', '$25');
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    expect(s.players[0].hand).toHaveLength(10);
+  });
+
   it("the original rule set is the creator's game", () => {
     expect(RULE_SETS.original).toMatchObject({
       bankruptMode: 'trap',
