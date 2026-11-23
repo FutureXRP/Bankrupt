@@ -168,10 +168,13 @@ type MenuProps = {
   onSolo: () => void;
   onLocal: () => void;
   onFriends: () => void;
+  onTutorial: () => void;
+  /** True until the tutorial has been finished or skipped once: it is then offered first. */
+  isNew: boolean;
   onNavigate: (screen: 'howto' | 'settings' | 'credits') => void;
 };
 
-export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onNavigate }: MenuProps) {
+export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onTutorial, isNew, onNavigate }: MenuProps) {
   return (
     <main className="menu">
       <Logo />
@@ -182,7 +185,12 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onNaviga
             Continue Game
           </button>
         )}
-        <button type="button" className={`btn btn--wide${hasSave ? '' : ' btn--primary'}`} onClick={onSolo}>
+        {isNew && (
+          <button type="button" className={`btn btn--wide${hasSave ? '' : ' btn--primary'}`} onClick={onTutorial}>
+            Learn to Play <small>1 minute</small>
+          </button>
+        )}
+        <button type="button" className={`btn btn--wide${hasSave || isNew ? '' : ' btn--primary'}`} onClick={onSolo}>
           Play vs Computer
         </button>
         <button type="button" className="btn btn--wide" onClick={onFriends}>
@@ -191,6 +199,11 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onNaviga
         <button type="button" className="btn btn--wide" onClick={onLocal}>
           Pass &amp; Play <small>one device</small>
         </button>
+        {!isNew && (
+          <button type="button" className="btn btn--wide" onClick={onTutorial}>
+            Tutorial <small>1 minute</small>
+          </button>
+        )}
         <button type="button" className="btn btn--wide" onClick={() => onNavigate('howto')}>
           How to Play
         </button>
@@ -377,9 +390,24 @@ const SWAP_COUNTS = DECK_ROWS.flatMap((row) => row.totals.map((t) => t.swaps));
 const TWO_PLAYER_SIZE = deckSizeFor(2, 'by_players', 0, 10);
 const PIGGY_TWO_PLAYER_DEFENSES = twoPlayerDefenseCount(TWO_PLAYER_SIZE, RULE_SETS.piggy.twoPlayerDefenseCopies);
 
-export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPractice: () => void }) {
+export function HowToPlay({
+  onBack,
+  onPractice,
+  onTutorial,
+}: {
+  onBack: () => void;
+  onPractice: () => void;
+  onTutorial: () => void;
+}) {
   return (
     <Page title="How to Play" onBack={onBack}>
+      <section className="choice">
+        <h2>New to the game?</h2>
+        <p className="note">The quickest way to learn is to play. The tutorial walks you through one short hand.</p>
+        <button type="button" className="btn btn--primary btn--wide" onClick={onTutorial}>
+          Play the 1-minute tutorial
+        </button>
+      </section>
       <div className="prose">
         <h2>The goal</h2>
         <p>

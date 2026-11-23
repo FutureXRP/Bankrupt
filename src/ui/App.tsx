@@ -17,6 +17,7 @@ import {
 } from '../engine';
 import { Game } from './Game';
 import { Friends, codeFromAddress } from './Online';
+import { Tutorial, tutorialDone } from './Tutorial';
 import { Credits, HowToPlay, Menu, SettingsScreen, Setup } from './Screens';
 import {
   clearSavedGame,
@@ -28,7 +29,7 @@ import {
   type Settings,
 } from './storage';
 
-type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits' | 'friends';
+type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits' | 'friends' | 'tutorial';
 
 const DEFAULT_SEATS: SeatConfig[] = [
   { name: 'Player 1', isAI: false },
@@ -88,6 +89,20 @@ export function App() {
     else deal(seats, ruleSet, extras, after);
   };
 
+  /** A gentle first real game: the original rules against two easy computer players. */
+  const practice = () =>
+    start(
+      [
+        { name: 'Player 1', isAI: false },
+        { name: 'Penny', isAI: true, difficulty: 'casual' },
+        { name: 'Buck', isAI: true, difficulty: 'casual' },
+      ],
+      'original',
+      extras,
+      1,
+      false,
+    );
+
   const resume = () => {
     if (!saved) return;
     setSeats(saved.seats);
@@ -130,22 +145,14 @@ export function App() {
     case 'setup':
       return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} initialTarget={match.target} initialCarryOver={match.carryOver} onStart={start} onBack={toMenu} />;
     case 'howto':
+      return <HowToPlay onBack={toMenu} onPractice={practice} onTutorial={() => setScreen('tutorial')} />;
+    case 'tutorial':
       return (
-        <HowToPlay
-          onBack={toMenu}
-          onPractice={() =>
-            start(
-              [
-                { name: 'Player 1', isAI: false },
-                { name: 'Penny', isAI: true, difficulty: 'casual' },
-                { name: 'Buck', isAI: true, difficulty: 'casual' },
-              ],
-              'original',
-              extras,
-              1,
-              false,
-            )
-          }
+        <Tutorial
+          settings={settings}
+          onToggleSound={() => setSettings((current) => ({ ...current, sound: !current.sound }))}
+          onExit={toMenu}
+          onPlay={practice}
         />
       );
     case 'settings':
@@ -175,6 +182,8 @@ export function App() {
             setScreen('setup');
           }}
           onFriends={() => setScreen('friends')}
+          onTutorial={() => setScreen('tutorial')}
+          isNew={!tutorialDone()}
           onNavigate={setScreen}
         />
       );

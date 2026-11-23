@@ -48,10 +48,11 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - An unfinished game against the computer or in Pass & Play is saved in the browser as it goes and can be
   continued from the menu after a refresh, a phone call or closing the browser. The screen is kept awake
   during a game where the browser allows it.
+- A one-minute tutorial: a short scripted hand on the real rules, with a coach saying what to tap. It is
+  offered first to new players and stays on the menu afterwards.
 - How to Play, Settings (computer speed, sound, reduced motion, text size) and Credits screens.
 
-Not built yet: matchmaking with strangers, a step-by-step interactive tutorial (there is a rules page and a practice
-match instead), final illustrations and card-flight animations, and browser end-to-end tests in the repo.
+Not built yet: matchmaking with strangers, final illustrations and card-flight animations, and browser end-to-end tests in the repo.
 
 ## Play with Friends (invite codes)
 
@@ -204,7 +205,7 @@ src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgam
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
 src/net/      Invite-code play: host and guest connections and the messages between them
 src/ui/       React screens, card faces, sounds, saved settings
-tests/        Rules tests for all three rule sets and the variants, plus 3,000 simulated games
+tests/        Rules, match, online-message and tutorial-script tests, plus 3,000 simulated games
 ```
 
 The engine is independent of the interface, so the same rules can later drive an online server or a mobile app.

@@ -272,3 +272,19 @@ button.card:hover { transform: translateY(-4%); }
 .extras__title { font-weight: 800; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; margin-top: .4rem; }
 .overlay--top { z-index: 30; }
 .matchscore small b { color: var(--gold); font-size: 1.1rem; }
+
+/* ---------- Tutorial coach ---------- */
+.tutorial { position: relative; }
+.coach {
+  position: sticky; top: 0; z-index: 20; width: min(64rem, 100%); margin: 0 auto; padding: .7rem .9rem;
+  display: grid; gap: .4rem;
+  background: var(--gold); color: var(--gold-ink); border-bottom: 3px solid #b8860b; border-radius: 0 0 1rem 1rem;
+  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .45);
+}
+.coach__head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+.coach__skip { background: none; border: 0; padding: .3rem .2rem; font-weight: 800; text-decoration: underline; cursor: pointer; color: var(--gold-ink); }
+.coach__say { font-size: 1.08rem; font-weight: 800; line-height: 1.35; }
+.coach__nudge { font-weight: 800; background: #fff3c4; border: 2px solid #b8860b; border-radius: .6rem; padding: .35rem .6rem; }
+.coach__actions { display: flex; align-items: center; gap: .6rem; min-height: 0; }
+.coach__actions .btn--primary { background: var(--bg); border-color: var(--bg-2); color: var(--text); }
+.coach__wait { font-weight: 800; font-style: italic; }
