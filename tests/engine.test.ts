@@ -160,8 +160,10 @@ describe('Bank Thief and Sheriff', () => {
     s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: sheriffId });
     expect([total(s, 0), total(s, 1), total(s, 2)]).toEqual([0, 125, 0]);
     expect(s.discardPile.map((c) => c.id).sort()).toEqual([thiefId, sheriffId].sort());
-    // The defender does not refill until the end of their own turn.
-    expect(s.players[1].hand).toHaveLength(0);
+    // The defender spent a card, so they restock to six straight away.
+    expect(s.players[1].hand).toHaveLength(6);
+    expect(s.players[0].hand).toHaveLength(6);
+    expect(s.currentPlayerIndex).toBe(1);
   });
 
   it('takes the only card automatically, leaving the victim at $0', () => {
@@ -179,6 +181,52 @@ describe('Bank Thief and Sheriff', () => {
     s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
     s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: null });
     expect(s.phase).toBe('theft_selection');
+  });
+});
+
+describe('restocking after a defense', () => {
+  const robbery = (rules?: Parameters<typeof blankGame>[1]) => {
+    const s = blankGame(3, rules);
+    give(s, 0, 'hand', 'bank_thief', '$5');
+    give(s, 1, 'bank', '$100', '$25');
+    give(s, 1, 'hand', 'sheriff', '$50', '$50', '$25', '$5', 'vault_lock');
+    return s;
+  };
+
+  it('the defender draws first, then the attacker', () => {
+    let s = robbery();
+    const [top, second] = [s.drawPile[s.drawPile.length - 1].id, s.drawPile[s.drawPile.length - 2].id];
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
+    expect(s.players[1].hand).toHaveLength(6); // not yet: the Sheriff is still in hand
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] });
+    expect(s.players[1].hand.map((c) => c.id)).toContain(top); // the defender took the top card
+    expect(s.players[0].hand.map((c) => c.id)).toContain(second); // then the attacker drew
+    expect(s.players.map((p) => p.hand.length)).toEqual([6, 6, 0]);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('a Bankrupt drawn while restocking hits the defender (trap rules)', () => {
+    let s = robbery();
+    stackTop(s, 'bankrupt');
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] });
+    // Ben holds a Vault Lock, so the game waits for HIS decision even though it is Ava's turn.
+    expect(s.phase).toBe('bankrupt_draw');
+    expect(s.pendingDraw).toEqual({ playerId: 'p2' });
+    expect(s.currentPlayerIndex).toBe(0);
+    expect(checkInvariants(s)).toEqual([]);
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: null });
+    expect(total(s, 1)).toBe(0);
+    expect(s.players.map((p) => p.hand.length)).toEqual([6, 6, 0]);
+    expect(s.phase).toBe('action');
+    expect(s.currentPlayerIndex).toBe(1);
+  });
+
+  it('can be switched off so defenders wait for their own turn', () => {
+    let s = robbery({ refillAfterDefense: false });
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] });
+    expect(s.players[1].hand).toHaveLength(5);
   });
 });
 
@@ -496,6 +544,21 @@ describe('Piggy Bank rule set', () => {
     expect(total(s, 1)).toBe(0);
     expect(publicBankruptCount(s)).toBe(1); // now that it has been played, everyone knows
     expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('the deck grows with the table: 80 cards for 2, 117 for 3, 154 for 4, always 6 Bankrupt', () => {
+    for (const [count, cards, money] of [[2, 80, 2520], [3, 117, 3780], [4, 154, 5040]] as const) {
+      const s = createGame({ players: seats(count), seed: 9, rules: RULE_SETS.original });
+      const all = [...s.drawPile, ...s.players.flatMap((p) => p.hand)];
+      expect(all).toHaveLength(cards);
+      expect(new Set(all.map((c) => c.id)).size).toBe(cards);
+      expect(all.filter((c) => c.kind === 'bankrupt')).toHaveLength(6);
+      expect(sumMoney(all)).toBe(money);
+      expect(checkInvariants(s)).toEqual([]);
+    }
+    // The basic rules object still deals the plain 80-card deck at any table size.
+    const plain = createGame({ players: seats(4), seed: 9 });
+    expect(plain.drawPile.length + 24).toBe(80);
   });
 
   it("the original rule set is the creator's game", () => {

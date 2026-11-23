@@ -1,14 +1,16 @@
 // Core invariants (spec §18.3). Returns a list of problems; empty means healthy.
 
-import { BANKRUPT_TOTAL, TOTAL_CARDS, TOTAL_MONEY_VALUE, buildDeck, sumMoney } from './cards';
+import { BANKRUPT_TOTAL, buildDeck, deckCardCount, deckMoneyValue, sumMoney } from './cards';
 import type { GameState } from './state';
 
-const KNOWN_IDS = new Set(buildDeck().map((c) => c.id));
 
 export function checkInvariants(state: GameState): string[] {
   const problems: string[] = [];
   const zones = [state.drawPile, state.discardPile, state.removed, ...state.players.flatMap((p) => [p.hand, p.bank])];
   const all = zones.flat();
+  const KNOWN_IDS = new Set(buildDeck(state.deck).map((c) => c.id));
+  const TOTAL_CARDS = deckCardCount(state.deck);
+  const TOTAL_MONEY_VALUE = deckMoneyValue(state.deck);
 
   const seen = new Set<string>();
   for (const card of all) {

@@ -1,6 +1,6 @@
 // Game state model (spec §18.2).
 
-import type { AttackKind, Card } from './cards';
+import type { AttackKind, Card, DeckSize } from './cards';
 import type { RuleConfig } from './rules';
 
 export type Difficulty = 'casual' | 'competitive' | 'expert';
@@ -56,6 +56,7 @@ export type PendingAttack = {
 
 export type GameState = {
   rules: RuleConfig;
+  deck: DeckSize; // how big a deck this game was dealt from
   players: Player[];
   drawPile: Card[]; // top of the deck is the END of the array
   discardPile: Card[];
@@ -65,7 +66,9 @@ export type GameState = {
   turnNumber: number;
   phase: Phase;
   bankruptDrawnCount: number;
-  bankedThisTurn: number; // dollars the active player has banked so far this turn
+  bankedThisTurn: number;
+  /** Players still owed a refill before the turn can pass, in order. */
+  refillQueue: string[]; // dollars the active player has banked so far this turn
   pendingAttack?: PendingAttack;
   /** Trap mode: this player drew Bankrupt, holds a Vault Lock, and must decide whether to use it. */
   pendingDraw?: { playerId: string };
@@ -99,6 +102,7 @@ export function cloneState(s: GameState): GameState {
     drawPile: [...s.drawPile],
     discardPile: [...s.discardPile],
     removed: [...s.removed],
+    refillQueue: [...s.refillQueue],
     pendingAttack: s.pendingAttack ? { ...s.pendingAttack } : undefined,
     pendingDraw: s.pendingDraw ? { ...s.pendingDraw } : undefined,
     finalRound: s.finalRound ? { ...s.finalRound } : undefined,

@@ -33,7 +33,8 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 
 ## What is in the game
 
-- The exact 80-card deck and setup: deal from the 74 non-Bankrupt cards, then shuffle the six Bankrupt cards in.
+- The original setup: deal six cards each from the non-Bankrupt cards, then shuffle the six Bankrupt cards in.
+- A deck that grows with the table (see below), so games last about as long for 2, 3 or 4 players.
 - One action per turn: bank a matching set, play Bank Thief, or discard when stuck. Then refill to six cards.
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
@@ -64,6 +65,21 @@ How it connects: the devices talk to each other directly (WebRTC, via the `peerj
 other they use PeerJS's free public connection service, so there is no server to run or pay for. The
 trade-offs are that the game depends on that service being up, and that a few networks (some schools,
 offices and mobile carriers) block direct connections. Everyone on the same home Wi-Fi is the easy case.
+
+## Deck size
+
+There are always six Bankrupt cards. The rest of the deck grows with the number of players, because the game
+ends on the sixth Bankrupt and a bigger table empties the deck faster:
+
+| Players | Deck | Each money value | Vault Lock / Bank Thief / Sheriff | Average rounds (was, with 80 cards) |
+|---|---|---|---|---|
+| 2 | 80 cards | 14 | 6 each | about 13 |
+| 3 | 117 cards | 21 | 9 each | about 14 (was 8) |
+| 4 | 154 cards | 28 | 12 each | about 15 (was 5) |
+
+Round counts are from 1,500 simulated games per row under Original rules. The shuffle itself was checked over
+20,000 deals: Bankrupt cards land evenly through the deck. Setting `deckScale: 'fixed'` in the rules file goes
+back to 80 cards at every table size.
 
 ## Three rule sets
 

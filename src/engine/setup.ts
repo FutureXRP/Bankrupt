@@ -1,7 +1,7 @@
 // Setup (spec §4): separate the Bankrupt cards, deal from the other 74,
 // then shuffle the six Bankrupt cards into what is left.
 
-import { SPECIAL_COPIES, buildDeck } from './cards';
+import { buildDeck, deckSizeFor } from './cards';
 import { nextRandom, shuffled } from './rng';
 import { DEFAULT_RULES, type RuleConfig } from './rules';
 import type { Difficulty, GameState, Player } from './state';
@@ -20,11 +20,12 @@ export function createGame(options: GameOptions): GameState {
   if (count < 2 || count > 4) throw new Error('BANKRUPT is for 2 to 4 players.');
   const rules: RuleConfig = { ...DEFAULT_RULES, ...options.rules };
 
-  const deck = buildDeck();
+  const deckSize = deckSizeFor(count, rules.deckScale);
+  const deck = buildDeck(deckSize);
   const bankrupts = deck.filter((c) => c.kind === 'bankrupt');
   const removed: typeof deck = [];
   let others = deck.filter((c) => c.kind !== 'bankrupt');
-  if (count === 2 && rules.twoPlayerDefenseCopies < SPECIAL_COPIES) {
+  if (count === 2 && rules.twoPlayerDefenseCopies < deckSize.specialCopies) {
     for (const kind of ['vault_lock', 'sheriff'] as const) {
       removed.push(...others.filter((c) => c.kind === kind).slice(rules.twoPlayerDefenseCopies));
     }
@@ -63,6 +64,7 @@ export function createGame(options: GameOptions): GameState {
 
   return {
     rules,
+    deck: deckSize,
     players,
     drawPile: second.items,
     discardPile: [],
@@ -73,6 +75,7 @@ export function createGame(options: GameOptions): GameState {
     phase: 'action',
     bankruptDrawnCount: 0,
     bankedThisTurn: 0,
+    refillQueue: [],
     rngState,
     actionLog: [
       {

@@ -17,6 +17,8 @@ export type PublicPlayer = {
 export type PlayerView = {
   selfId: string;
   rules: RuleConfig;
+  /** Copies of each defense card in play this game (public knowledge, like the box contents). */
+  defenseCopies: number;
   hand: Card[];
   players: PublicPlayer[]; // everyone, in seat order, including self
   drawCount: number;
@@ -47,6 +49,10 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
   return {
     selfId: playerId,
     rules: { ...state.rules },
+    defenseCopies:
+      state.players.length === 2
+        ? Math.min(state.deck.specialCopies, state.rules.twoPlayerDefenseCopies)
+        : state.deck.specialCopies,
     hand: [...self.hand],
     players: state.players.map((p) => ({
       id: p.id,
@@ -82,6 +88,7 @@ export function maskStateFor(state: GameState, playerId: string): GameState {
     players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank) })),
     drawPile: state.drawPile.map(blank),
     removed: [],
+    refillQueue: [],
     rngState: 0,
     bankruptDrawnCount: publicBankruptCount(state),
   };

@@ -34,16 +34,34 @@ export const CARD_NAMES: Record<Exclude<CardKind, 'money'>, string> = {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** The full 80-card deck in a fixed, unshuffled order. */
-export function buildDeck(): Card[] {
+/** How many copies of each card a deck holds. Bankrupt is always six. */
+export type DeckSize = { moneyCopies: number; specialCopies: number };
+
+export const BASE_DECK: DeckSize = { moneyCopies: MONEY_COPIES, specialCopies: SPECIAL_COPIES };
+
+/** Bigger tables use a bigger deck so the game lasts about as long for everyone. */
+export function deckSizeFor(playerCount: number, scale: 'fixed' | 'by_players'): DeckSize {
+  const factor = scale === 'by_players' ? (playerCount >= 4 ? 2 : playerCount === 3 ? 1.5 : 1) : 1;
+  return { moneyCopies: MONEY_COPIES * factor, specialCopies: SPECIAL_COPIES * factor };
+}
+
+export const deckCardCount = (size: DeckSize) =>
+  MONEY_VALUES.length * size.moneyCopies + 3 * size.specialCopies + BANKRUPT_TOTAL;
+
+export const deckMoneyValue = (size: DeckSize) =>
+  MONEY_VALUES.reduce((sum, v) => sum + v, 0) * size.moneyCopies;
+
+/** A full deck in a fixed, unshuffled order. The basic deck is 80 cards. */
+export function buildDeck(size: DeckSize = BASE_DECK): Card[] {
   const deck: Card[] = [];
   for (const value of MONEY_VALUES) {
-    for (let i = 1; i <= MONEY_COPIES; i++) {
+    for (let i = 1; i <= size.moneyCopies; i++) {
       deck.push({ id: `money${value}-${pad(i)}`, kind: 'money', value });
     }
   }
   for (const kind of SPECIAL_KINDS) {
-    for (let i = 1; i <= SPECIAL_COPIES; i++) {
+    const copies = kind === 'bankrupt' ? BANKRUPT_TOTAL : size.specialCopies;
+    for (let i = 1; i <= copies; i++) {
       deck.push({ id: `${kind}-${pad(i)}`, kind });
     }
   }

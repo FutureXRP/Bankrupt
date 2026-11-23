@@ -77,7 +77,8 @@ export function applyAction(prev: GameState, action: Action): GameState {
         player.id,
         attacker.id,
       );
-      endTurn(s);
+      // The defender spent a card, so they restock first, then the attacker.
+      endTurn(s, s.rules.refillAfterDefense ? [player.id] : []);
       break;
     }
     case 'steal':
@@ -160,10 +161,14 @@ function completeTheft(s: GameState, cardId: string) {
   endTurn(s);
 }
 
-/** The active player's action is over: refill their hand, then pass the turn. */
-function endTurn(s: GameState) {
+/**
+ * The active player's action is over: restock hands, then pass the turn.
+ * `first` lists anyone who must restock before the active player does.
+ */
+function endTurn(s: GameState, first: string[] = []) {
   s.pendingAttack = undefined;
   s.bankedThisTurn = 0;
+  s.refillQueue = [...first, s.players[s.currentPlayerIndex].id];
   refill(s);
 }
 
@@ -174,38 +179,44 @@ const trapEndsGameNow = (s: GameState) =>
   s.rules.bankruptMode === 'trap' && s.rules.endTrigger === 'immediate' && s.bankruptDrawnCount >= BANKRUPT_TOTAL;
 
 /**
- * Draw up to the hand limit, one card at a time. In trap mode a drawn Bankrupt
- * hits the player who drew it; if they hold a Vault Lock the refill pauses for
- * their decision and resumes afterwards.
+ * Each queued player draws up to the hand limit, one card at a time. In trap
+ * mode a drawn Bankrupt hits the player who drew it; if they hold a Vault Lock
+ * the refill pauses for their decision and resumes afterwards.
  */
 function refill(s: GameState) {
-  const player = s.players[s.currentPlayerIndex];
-  while (player.hand.length < s.rules.handSize && s.drawPile.length > 0) {
-    const card = s.drawPile.pop()!;
-    if (card.kind !== 'bankrupt') {
-      player.hand.push(card);
-      continue;
-    }
-    s.bankruptDrawnCount++;
+  while (s.refillQueue.length > 0) {
+    const player = byId(s, s.refillQueue[0]);
+    while (player.hand.length < s.rules.handSize && s.drawPile.length > 0) {
+      const card = s.drawPile.pop()!;
+      if (card.kind !== 'bankrupt') {
+        player.hand.push(card);
+        continue;
+      }
+      s.bankruptDrawnCount++;
 
-    if (s.rules.bankruptMode === 'attack') {
-      player.hand.push(card); // a secret: nobody is told until it is played
-      continue;
-    }
+      if (s.rules.bankruptMode === 'attack') {
+        player.hand.push(card); // a secret: nobody is told until it is played
+        continue;
+      }
 
-    s.discardPile.push(card);
-    player.stats.bankruptPlayed++;
-    if (player.bank.length === 0) {
-      log(s, 'draw', `${player.name} drew BANKRUPT (${counter(s)}) — but had nothing in the bank to lose.`, player.id);
-    } else if (player.hand.some((c) => c.kind === 'vault_lock')) {
-      s.phase = 'bankrupt_draw';
-      s.pendingDraw = { playerId: player.id };
-      log(s, 'attack', `${player.name} drew BANKRUPT (${counter(s)})!`, player.id, player.id);
-      return; // wait for the Vault Lock decision
-    } else {
-      bankruptDrawer(s, player);
+      s.discardPile.push(card);
+      player.stats.bankruptPlayed++;
+      if (player.bank.length === 0) {
+        log(s, 'draw', `${player.name} drew BANKRUPT (${counter(s)}) — but had nothing in the bank to lose.`, player.id);
+      } else if (player.hand.some((c) => c.kind === 'vault_lock')) {
+        s.phase = 'bankrupt_draw';
+        s.pendingDraw = { playerId: player.id };
+        log(s, 'attack', `${player.name} drew BANKRUPT (${counter(s)})!`, player.id, player.id);
+        return; // wait for the Vault Lock decision
+      } else {
+        bankruptDrawer(s, player);
+      }
+      if (trapEndsGameNow(s)) {
+        s.refillQueue = [];
+        return finishTurn(s);
+      }
     }
-    if (trapEndsGameNow(s)) break;
+    s.refillQueue.shift();
   }
   finishTurn(s);
 }
@@ -232,8 +243,12 @@ function answerDrawnBankrupt(s: GameState, player: Player, cardId: string | null
     player.stats.bankruptBlocked++;
     log(s, 'block', `${player.name}'s Vault Lock saved the bank from BANKRUPT!`, player.id);
   }
-  if (trapEndsGameNow(s)) finishTurn(s);
-  else refill(s);
+  if (trapEndsGameNow(s)) {
+    s.refillQueue = [];
+    finishTurn(s);
+  } else {
+    refill(s);
+  }
 }
 
 /** Check the countdown and pass the turn (or end the game). */
@@ -274,6 +289,7 @@ function finish(s: GameState) {
   s.phase = 'finished';
   s.pendingAttack = undefined;
   s.pendingDraw = undefined;
+  s.refillQueue = [];
   const { standings, winnerIds } = scoreGame(s);
   s.winnerIds = winnerIds;
   const names = winnerIds.map((id) => byId(s, id).name);

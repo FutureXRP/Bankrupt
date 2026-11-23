@@ -219,14 +219,14 @@ export function Setup({
 }
 
 const REFERENCE: { card: Card; text: string }[] = [
-  { card: { id: 'ref-5', kind: 'money', value: 5 }, text: '14 in the deck.' },
-  { card: { id: 'ref-25', kind: 'money', value: 25 }, text: '14 in the deck.' },
-  { card: { id: 'ref-50', kind: 'money', value: 50 }, text: '14 in the deck.' },
-  { card: { id: 'ref-100', kind: 'money', value: 100 }, text: '14 in the deck.' },
+  { card: { id: 'ref-5', kind: 'money', value: 5 }, text: '14 in the basic deck.' },
+  { card: { id: 'ref-25', kind: 'money', value: 25 }, text: '14 in the basic deck.' },
+  { card: { id: 'ref-50', kind: 'money', value: 50 }, text: '14 in the basic deck.' },
+  { card: { id: 'ref-100', kind: 'money', value: 100 }, text: '14 in the basic deck.' },
   { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. 6 hidden in the deck.' },
-  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the deck.' },
-  { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the deck." },
-  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the deck.' },
+  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the basic deck.' },
+  { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the basic deck." },
+  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the basic deck.' },
 ];
 
 export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPractice: () => void }) {
@@ -268,6 +268,13 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           The counter shows how many Bankrupt cards have been drawn. When the <strong>sixth</strong> one is drawn, the
           game is over right away and the richest bank wins. If two banks tie, the one with more cards wins; if that
           ties too, the win is shared.
+        </p>
+
+        <h2>Bigger table, bigger deck</h2>
+        <p>
+          There are always exactly 6 Bankrupt cards. With 2 players the deck is the basic 80 cards. With 3 players
+          there are one and a half times as many of the other cards (117 in all), and with 4 players twice as many
+          (154 in all), so the game lasts about as long however many are playing.
         </p>
 
         <h2>Bankrupt Attack mode</h2>
@@ -371,7 +378,7 @@ export function Credits({ onBack }: { onBack: () => void }) {
         <p className="credits__creator">
           BANKRUPT was invented by <strong>{CREATOR_CREDIT}</strong>.
         </p>
-        <p>The cards, the six-card hand, the 80-card deck and the Bankrupt trap are all from the original game.</p>
+        <p>The cards, the six-card hand and the Bankrupt trap are all from the original game.</p>
         <p>
           BANKRUPT uses pretend money only. There is no betting and nothing to buy.
         </p>

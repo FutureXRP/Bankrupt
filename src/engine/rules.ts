@@ -45,6 +45,18 @@ export type RuleConfig = {
   stuckDiscardLimit: number;
   /** Copies of Vault Lock and of Sheriff used in a 2-player game (the rest stay in the box). */
   twoPlayerDefenseCopies: number;
+  /**
+   * fixed: always the basic 80-card deck.
+   * by_players: 3 players use 1.5× and 4 players 2× the money, Vault Lock, Bank
+   *   Thief and Sheriff cards (still six Bankrupt), so games last about as long
+   *   at every table size.
+   */
+  deckScale: 'fixed' | 'by_players';
+  /**
+   * true: a player who uses a Vault Lock or Sheriff out of turn draws back up to
+   *   a full hand straight away. false: they wait until the end of their own turn.
+   */
+  refillAfterDefense: boolean;
   /** Hand size (recovered rule: six). */
   handSize: number;
 };
@@ -60,6 +72,8 @@ export const DEFAULT_RULES: RuleConfig = {
   bankruptDestroys: 'all',
   stuckDiscardLimit: 1,
   twoPlayerDefenseCopies: 6,
+  deckScale: 'fixed',
+  refillAfterDefense: true,
   handSize: 6,
 };
 
@@ -71,19 +85,21 @@ export const DEFAULT_RULES: RuleConfig = {
  *   1. a bankrupted player keeps their smallest pile (far fewer $0 finishes);
  *   2. after the sixth Bankrupt everyone gets one last turn;
  *   3. a 2-player game uses 4 Vault Locks and 4 Sheriffs (fewer dead turns).
+ * All three use a deck that grows with the number of players (deckScale).
  * attack: Bankrupt goes into your hand when you draw it and you play it on
  *   another player, who can block with Vault Lock. After the sixth Bankrupt is
  *   drawn everyone gets one last turn, so the last ones can still be played.
  */
 export const RULE_SETS = {
-  original: DEFAULT_RULES,
+  original: { ...DEFAULT_RULES, deckScale: 'by_players' },
   piggy: {
     ...DEFAULT_RULES,
+    deckScale: 'by_players',
     bankruptDestroys: 'all_but_smallest_pile',
     endTrigger: 'final_circuit',
     twoPlayerDefenseCopies: 4,
   },
-  attack: { ...DEFAULT_RULES, bankruptMode: 'attack', endTrigger: 'final_circuit' },
+  attack: { ...DEFAULT_RULES, deckScale: 'by_players', bankruptMode: 'attack', endTrigger: 'final_circuit' },
 } as const satisfies Record<string, RuleConfig>;
 
 export type RuleSetId = keyof typeof RULE_SETS;

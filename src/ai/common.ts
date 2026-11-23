@@ -3,7 +3,6 @@
 
 import {
   DEFENSE_FOR,
-  SPECIAL_COPIES,
   bankableValues,
   pileSavedFromBankrupt,
   sumMoney,
@@ -110,8 +109,7 @@ export function blockChance(view: PlayerView, kind: AttackKind, target: PublicPl
   const defense = DEFENSE_FOR[kind];
   const known =
     view.hand.filter((c) => c.kind === defense).length + view.discardPile.filter((c) => c.kind === defense).length;
-  const copies = view.players.length === 2 ? Math.min(SPECIAL_COPIES, view.rules.twoPlayerDefenseCopies) : SPECIAL_COPIES;
-  const unseenDefenses = Math.max(0, copies - known);
+  const unseenDefenses = Math.max(0, view.defenseCopies - known);
   const unseenCards = view.drawCount + opponents(view).reduce((sum, p) => sum + p.handCount, 0);
   if (unseenDefenses === 0 || target.handCount === 0 || unseenCards === 0) return 0;
   let noneHeld = 1;
