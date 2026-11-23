@@ -1,6 +1,6 @@
 // "Play with Friends": host a game and share its invite code, or join one.
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import type { Difficulty } from '../engine';
 import { GuestRoom } from '../net/guest';
 import { HostRoom } from '../net/host';
@@ -50,13 +50,8 @@ export function Friends({ settings, onToggleSound, onExit, initialCode }: Props)
   const [name, setName] = useState(loadName);
   const [code, setCode] = useState(initialCode);
 
-  // Closing the tab ends the connection cleanly for everyone else.
-  useEffect(() => {
-    if (mode.kind === 'choose') return;
-    const close = () => mode.room.close();
-    window.addEventListener('pagehide', close);
-    return () => window.removeEventListener('pagehide', close);
-  }, [mode]);
+  // Note: the connection is deliberately NOT closed when the page is hidden. Phones hide the
+  // page for a call or another app, and the game should still be there when the player returns.
 
   const leave = () => {
     if (mode.kind !== 'choose') mode.room.close();
@@ -310,17 +305,30 @@ function GuestView({
 }) {
   useSyncExternalStore(room.subscribe, () => room.version);
 
-  if (room.status === 'playing' && room.game) {
+  if ((room.status === 'playing' || room.status === 'reconnecting') && room.game) {
     return (
-      <Game
+      <>
+        {room.status === 'reconnecting' && (
+          <div className="overlay overlay--top" role="alert">
+            <div className="dialog">
+              <h2>Reconnecting…</h2>
+              <p>The connection dropped. Your seat is saved and the game will carry on as soon as you are back.</p>
+              <button type="button" className="btn" onClick={onExit}>
+                Leave Game
+              </button>
+            </div>
+          </div>
+        )}
+        <Game
         key={room.game.id}
         initialState={room.game.state}
         settings={settings}
         onToggleSound={onToggleSound}
         onExit={onExit}
-        online={{ state: room.game.state, seatId: room.game.seatId, runAI: false, onAction: room.sendAction }}
-        match={room.game.match}
-      />
+          online={{ state: room.game.state, seatId: room.game.seatId, runAI: false, onAction: room.sendAction }}
+          match={room.game.match}
+        />
+      </>
     );
   }
 
@@ -336,6 +344,11 @@ function GuestView({
       {room.status === 'connecting' && (
         <p className="note" role="status">
           Looking for game {room.code}…
+        </p>
+      )}
+      {room.status === 'reconnecting' && (
+        <p className="note note--warn" role="alert">
+          The connection dropped. Reconnecting…
         </p>
       )}
 

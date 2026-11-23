@@ -36,7 +36,7 @@ import {
   type LobbyInfo,
 } from './protocol';
 
-type Guest = { conn: DataConnection; name: string; lastSeen: number };
+type Guest = { conn: DataConnection; name: string; device: string; lastSeen: number };
 
 const AI_NAMES = ['Penny', 'Buck', 'Goldie'];
 
@@ -59,14 +59,21 @@ export class HostRoom {
   private listeners = new Set<() => void>();
   private closed = false;
   private attempts = 0;
-  /** Seats whose player dropped out mid-game, by name, so they can come back. */
-  private emptySeats = new Map<string, string>();
+  private lastTick = Date.now();
+  /** Seats whose player dropped out mid-game, by device and by name, so they can come back. */
+  private emptySeats = new Map<string, { seatId: string; name: string }>();
   private heartbeat: ReturnType<typeof setInterval>;
 
   constructor(public hostName: string) {
     this.open();
+    document.addEventListener('visibilitychange', this.onVisibility);
+    window.addEventListener('online', this.onVisibility);
     this.heartbeat = setInterval(() => {
       const now = Date.now();
+      // If this page was suspended (a phone call, another app), every guest looks
+      // silent the moment it wakes. Give them a fresh chance to check in first.
+      if (now - this.lastTick > PING_EVERY_MS * 3) for (const guest of this.guests) guest.lastSeen = now;
+      this.lastTick = now;
       for (const guest of [...this.guests]) {
         if (now - guest.lastSeen > SILENCE_TIMEOUT_MS) {
           this.leave(guest.conn);
@@ -77,6 +84,12 @@ export class HostRoom {
       }
     }, PING_EVERY_MS);
   }
+
+  /** Back on screen: make sure new players (and returning ones) can still find this game. */
+  private onVisibility = () => {
+    if (document.visibilityState !== 'visible' || this.closed) return;
+    if (this.peer.disconnected && !this.peer.destroyed) this.peer.reconnect();
+  };
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -132,14 +145,31 @@ export class HostRoom {
     if (message.t === 'ping') return;
     if (message.t === 'join') {
       if (known) return;
-      if (this.game && this.rejoin(conn, String(message.name ?? ''))) return;
+      const device = String(message.device ?? '');
+      const returning = device ? this.guests.find((g) => g.device === device) : undefined;
+      if (returning) {
+        // The same device on a fresh connection (its old one broke before we noticed):
+        // keep its seat and name, and just swap the connection over.
+        const old = returning.conn;
+        const seatId = this.seatByConn.get(old);
+        this.seatByConn.delete(old);
+        returning.conn = conn;
+        returning.lastSeen = Date.now();
+        if (seatId) this.seatByConn.set(conn, seatId);
+        old.close();
+        this.sendLobby();
+        this.sendState();
+        this.changed();
+        return;
+      }
+      if (this.game && this.rejoin(conn, String(message.name ?? ''), device)) return;
       const refuse = (reason: string) => {
         this.send(conn, { t: 'refused', reason });
         setTimeout(() => conn.close(), 500);
       };
       if (this.game) return refuse('That game has already started.');
       if (this.guests.length >= MAX_PLAYERS - 1) return refuse('That game is full.');
-      this.guests.push({ conn, name: this.uniqueName(String(message.name ?? '')), lastSeen: Date.now() });
+      this.guests.push({ conn, name: this.uniqueName(String(message.name ?? '')), device, lastSeen: Date.now() });
       this.computers = Math.min(this.computers, MAX_PLAYERS - 1 - this.guests.length);
       this.sendLobby();
       this.changed();
@@ -153,11 +183,12 @@ export class HostRoom {
   }
 
   /** A player who dropped out mid-game takes their seat back from the computer. */
-  private rejoin(conn: DataConnection, rawName: string): boolean {
-    const name = rawName.trim().slice(0, 14);
-    const seatId = this.emptySeats.get(name.toLowerCase());
-    if (!this.game || !seatId) return false;
-    this.emptySeats.delete(name.toLowerCase());
+  private rejoin(conn: DataConnection, rawName: string, device: string): boolean {
+    const typed = rawName.trim().slice(0, 14);
+    const held = this.emptySeats.get(`device:${device}`) ?? this.emptySeats.get(`name:${typed.toLowerCase()}`);
+    if (!this.game || !held) return false;
+    const { seatId, name } = held;
+    for (const [key, seat] of this.emptySeats) if (seat.seatId === seatId) this.emptySeats.delete(key);
     const state = this.game.state;
     this.game = {
       id: this.game.id,
@@ -166,7 +197,7 @@ export class HostRoom {
         players: state.players.map((p) => (p.id === seatId ? { ...p, isAI: false, difficulty: undefined, name } : p)),
       },
     };
-    this.guests.push({ conn, name, lastSeen: Date.now() });
+    this.guests.push({ conn, name, device, lastSeen: Date.now() });
     this.seatByConn.set(conn, seatId);
     this.sendLobby();
     this.sendState();
@@ -190,7 +221,9 @@ export class HostRoom {
     this.seatByConn.delete(conn);
     if (this.game && seatId && this.game.state.phase !== 'finished') {
       // Keep the game going: a computer player takes over the empty seat.
-      this.emptySeats.set(guest.name.toLowerCase(), seatId);
+      const held = { seatId, name: guest.name };
+      this.emptySeats.set(`name:${guest.name.toLowerCase()}`, held);
+      if (guest.device) this.emptySeats.set(`device:${guest.device}`, held);
       const state = this.game.state;
       this.game = {
         id: this.game.id,
@@ -313,6 +346,8 @@ export class HostRoom {
     if (this.closed) return;
     this.closed = true;
     clearInterval(this.heartbeat);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    window.removeEventListener('online', this.onVisibility);
     for (const guest of this.guests) this.send(guest.conn, { t: 'closed' });
     // Give the goodbye a moment to leave before tearing the connections down.
     setTimeout(() => this.peer.destroy(), 300);

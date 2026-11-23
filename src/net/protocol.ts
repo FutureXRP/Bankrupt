@@ -9,7 +9,10 @@ export const MAX_PLAYERS = 4;
 
 /** Both sides say hello this often, and give up on a silent connection after the timeout. */
 export const PING_EVERY_MS = 3_000;
-export const SILENCE_TIMEOUT_MS = 15_000;
+export const SILENCE_TIMEOUT_MS = 20_000;
+/** A guest who has lost the connection keeps trying to get back in for this long. */
+export const RECONNECT_FOR_MS = 15 * 60_000;
+export const RETRY_EVERY_MS = 3_000;
 
 export type LobbyPlayer = { name: string; kind: 'host' | 'guest' | 'computer' };
 
@@ -23,7 +26,10 @@ export type LobbyInfo = {
 
 export type OnlineGame = { id: number; seatId: string; state: GameState; match: MatchState };
 
-export type GuestMessage = { t: 'join'; name: string } | { t: 'action'; action: Action } | { t: 'ping' };
+export type GuestMessage =
+  | { t: 'join'; name: string; device: string }
+  | { t: 'action'; action: Action }
+  | { t: 'ping' };
 
 export type HostMessage =
   | { t: 'lobby'; lobby: LobbyInfo; you: string }
@@ -104,5 +110,23 @@ export class Reassembler {
     if (pieces.filter((p) => p !== undefined).length < part.n) return null;
     this.pending.delete(part.id);
     return JSON.parse(pieces.join('')) as object;
+  }
+}
+
+/**
+ * A random id kept in this browser, so the host can tell "the same device
+ * coming back after a dropped connection" from "a new player with the same name".
+ */
+export function deviceId(): string {
+  const KEY = 'bankrupt.device';
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return Math.random().toString(36).slice(2);
   }
 }

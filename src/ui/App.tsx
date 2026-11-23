@@ -100,10 +100,10 @@ export function App() {
     setScreen('menu');
   };
 
-  // Only solo games are saved: a pass-and-play save would expose hands on reload.
+  // Every local game is saved as it goes, so a refresh, a phone call or the browser being
+  // closed does not lose it. (A resumed pass-and-play game opens on the "pass to…" screen.)
   const onStateChange = useCallback(
     (state: GameState) => {
-      if (seats.filter((s) => !s.isAI).length !== 1) return;
       if (state.phase === 'finished') clearSavedGame();
       else saveGame({ seats, ruleSet, extras, match, state });
     },

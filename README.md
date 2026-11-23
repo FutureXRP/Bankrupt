@@ -45,7 +45,9 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - Play with Friends: one player hosts and gets an invite code; up to three others join from their own
   devices (see below).
 - Pass & Play for 2–4 people on one device, with a privacy screen between turns.
-- An unfinished solo game is saved in the browser and can be continued from the menu.
+- An unfinished game against the computer or in Pass & Play is saved in the browser as it goes and can be
+  continued from the menu after a refresh, a phone call or closing the browser. The screen is kept awake
+  during a game where the browser allows it.
 - How to Play, Settings (computer speed, sound, reduced motion, text size) and Credits screens.
 
 Not built yet: matchmaking with strangers, a step-by-step interactive tutorial (there is a rules page and a practice
@@ -58,9 +60,12 @@ match instead), final illustrations and card-flight animations, and browser end-
   seats with computer players, picks the rules, and starts the game.
 - The host's device runs the game and checks every move. Each guest is only ever sent their own cards; other
   hands and the deck arrive blanked out.
-- If a guest drops out mid-game, a computer player takes over their seat within about 15 seconds. They can
-  take the seat back by joining again with the same code and name.
-- If the host leaves, the game ends for everyone.
+- If a guest's device is interrupted (a phone call, another app, a dropped connection), a computer player
+  covers their seat after about 20 seconds so the game keeps moving. When they come back the game reconnects
+  by itself and they get the seat back. They can also rejoin by hand with the same code and name.
+- If the host's device is interrupted, the game pauses; guests see "Reconnecting…" and keep trying for 15
+  minutes, and play resumes when the host returns. If the host closes the game or their page is shut down,
+  the game ends for everyone.
 - The host can make it a match (first to 2 or 3 round wins); see below.
 
 How it connects: the devices talk to each other directly (WebRTC, via the `peerjs` library). To find each

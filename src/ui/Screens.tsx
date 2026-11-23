@@ -477,6 +477,12 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
             <strong>Play vs Computer:</strong> play against one to three computer players.
           </li>
         </ul>
+        <p>
+          <strong>If you get interrupted</strong> — a phone call, a message, switching apps — your game is not lost.
+          Games against the computer and Pass &amp; Play games are saved as you go: open the game again and tap{' '}
+          <strong>Continue Game</strong>. In a game with friends, a computer covers your seat while you are away and
+          you get it back by yourself when you return.
+        </p>
 
         <h2>Bankrupt Attack mode</h2>
         <p>

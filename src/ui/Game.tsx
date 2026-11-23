@@ -137,6 +137,28 @@ export function Game({
     setState((current) => (validateAction(current, action) ? current : applyAction(current, action)));
   };
 
+  // Keep the screen awake while a game is on (where the browser allows it), and ask again
+  // whenever the page comes back to the front, because the lock is dropped when it is hidden.
+  useEffect(() => {
+    type Lock = { release: () => Promise<void> };
+    const wakeLock = (navigator as Navigator & { wakeLock?: { request: (type: 'screen') => Promise<Lock> } }).wakeLock;
+    if (!wakeLock) return;
+    let lock: Lock | undefined;
+    const request = () => {
+      if (document.visibilityState !== 'visible') return;
+      wakeLock.request('screen').then(
+        (granted) => (lock = granted),
+        () => undefined,
+      );
+    };
+    request();
+    document.addEventListener('visibilitychange', request);
+    return () => {
+      document.removeEventListener('visibilitychange', request);
+      void lock?.release().catch(() => undefined);
+    };
+  }, []);
+
   // Let the app save progress.
   useEffect(() => onStateChange?.(state), [state, onStateChange]);
 

@@ -270,3 +270,4 @@ button.card:hover { transform: translateY(-4%); }
 .matchscore__pips .pip { background: var(--bg); border-color: var(--panel-line); box-shadow: none; }
 .matchscore__pips .pip--won { background: var(--gold); border-color: #fff3c4; box-shadow: 0 0 .5rem var(--gold); }
 .extras__title { font-weight: 800; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; margin-top: .4rem; }
+.overlay--top { z-index: 30; }
