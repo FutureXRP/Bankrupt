@@ -26,6 +26,7 @@ export type PlayerView = {
   currentPlayerId: string;
   phase: Phase;
   pendingAttack?: PendingAttack;
+  pendingDraw?: { playerId: string };
   finalRound?: { triggeredByPlayerId: string; turnsRemaining: number };
   turnNumber: number;
 };
@@ -52,6 +53,7 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
     currentPlayerId: state.players[state.currentPlayerIndex].id,
     phase: state.phase,
     pendingAttack: state.pendingAttack ? { ...state.pendingAttack } : undefined,
+    pendingDraw: state.pendingDraw ? { ...state.pendingDraw } : undefined,
     finalRound: state.finalRound ? { ...state.finalRound } : undefined,
     turnNumber: state.turnNumber,
   };

@@ -24,7 +24,7 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [screen, setScreen] = useState<Screen>('menu');
   const [seats, setSeats] = useState<SeatConfig[]>(DEFAULT_SEATS);
-  const [ruleSet, setRuleSet] = useState<RuleSetId>('piggy');
+  const [ruleSet, setRuleSet] = useState<RuleSetId>('original');
   const [game, setGame] = useState<{ key: number; state: GameState } | null>(null);
   const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame);
 
@@ -91,7 +91,7 @@ export function App() {
                 { name: 'Penny', isAI: true, difficulty: 'casual' },
                 { name: 'Buck', isAI: true, difficulty: 'casual' },
               ],
-              'piggy',
+              'original',
             )
           }
         />

@@ -35,6 +35,12 @@ export function checkInvariants(state: GameState): string[] {
   if ((state.phase === 'reaction' || state.phase === 'theft_selection') !== !!state.pendingAttack) {
     problems.push('Pending attack does not match the phase.');
   }
+  if ((state.phase === 'bankrupt_draw') !== !!state.pendingDraw) {
+    problems.push('Pending Bankrupt draw does not match the phase.');
+  }
+  if (state.rules.bankruptMode === 'trap' && state.players.some((p) => p.hand.some((c) => c.kind === 'bankrupt'))) {
+    problems.push('A Bankrupt card is in a hand in trap mode.');
+  }
   if (state.currentPlayerIndex < 0 || state.currentPlayerIndex >= state.players.length) {
     problems.push('Current player index is out of range.');
   }

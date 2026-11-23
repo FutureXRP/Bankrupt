@@ -40,6 +40,11 @@ export function chooseSteal(view: PlayerView, difficulty: Difficulty, rand: Rand
 
 /** Whatever decision the view's owner currently owes the game. */
 export function chooseForPhase(view: PlayerView, difficulty: Difficulty, rand: Rand): Action {
+  if (view.phase === 'bankrupt_draw') {
+    // The bank is never empty here, so a Vault Lock is always worth playing.
+    const lock = view.hand.find((c) => c.kind === 'vault_lock');
+    return { type: 'defend', playerId: view.selfId, cardId: lock ? lock.id : null };
+  }
   if (view.phase === 'reaction') return chooseDefense(view);
   if (view.phase === 'theft_selection') return chooseSteal(view, difficulty, rand);
   return chooseAction(view, difficulty, rand);

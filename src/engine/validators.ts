@@ -40,6 +40,14 @@ export function validateAction(state: GameState, action: Action): string | null 
   if (!player) return 'Unknown player.';
   const current = state.players[state.currentPlayerIndex];
 
+  if (action.type === 'defend' && state.phase === 'bankrupt_draw') {
+    if (state.pendingDraw?.playerId !== player.id) return 'Only the player who drew Bankrupt can respond.';
+    if (action.cardId === null) return state.rules.allowDeclineDefense ? null : 'You must play your Vault Lock.';
+    const card = player.hand.find((c) => c.id === action.cardId);
+    if (!card) return 'That card is not in your hand.';
+    return card.kind === 'vault_lock' ? null : 'Only Vault Lock stops Bankrupt.';
+  }
+
   if (action.type === 'defend') {
     const pending = state.pendingAttack;
     if (state.phase !== 'reaction' || !pending) return 'There is no attack to answer.';

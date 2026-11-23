@@ -23,6 +23,8 @@ export function blankGame(playerCount = 3, rules?: Partial<RuleConfig>): GameSta
     s.drawPile.push(...p.hand);
     p.hand = [];
   }
+  // Bankrupt cards go to the bottom so ordinary refills never hit one by accident.
+  s.drawPile.sort((a, b) => Number(b.kind === 'bankrupt') - Number(a.kind === 'bankrupt'));
   return s;
 }
 
@@ -56,3 +58,6 @@ export const total = (s: GameState, playerIndex: number) => sumMoney(s.players[p
 
 export const handIds = (s: GameState, playerIndex: number, spec: string) =>
   s.players[playerIndex].hand.filter((c) => matches(c, spec)).map((c) => c.id);
+
+/** The first spec's reading of Bankrupt (a card played on opponents), kept as a variant. */
+export const ATTACK_RULES: Partial<RuleConfig> = { bankruptMode: 'attack', endTrigger: 'final_circuit' };

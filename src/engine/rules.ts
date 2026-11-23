@@ -3,6 +3,14 @@
 // rewriting the engine. The defaults are the spec's recommended playtest rules.
 
 export type RuleConfig = {
+  /**
+   * How Bankrupt works.
+   * trap (the creator's rule): Bankrupt is never held or played. The player who
+   *   DRAWS it loses their own bank unless they play Vault Lock.
+   * attack (the first spec's mistaken reading, kept as a variant): Bankrupt goes
+   *   to the hand and is played on an opponent.
+   */
+  bankruptMode: 'trap' | 'attack';
   /** §25 #2 — smallest set of matching money that can be banked. 1 allows single cards. */
   minBankSetSize: 1 | 2;
   /**
@@ -42,10 +50,11 @@ export type RuleConfig = {
 };
 
 export const DEFAULT_RULES: RuleConfig = {
+  bankruptMode: 'trap',
   minBankSetSize: 2,
   thiefSteals: 'chosen_card',
   discardOnlyWhenStuck: true,
-  endTrigger: 'final_circuit',
+  endTrigger: 'immediate',
   allowDeclineDefense: true,
   turnStyle: 'one_action',
   bankruptDestroys: 'all',
@@ -56,14 +65,21 @@ export const DEFAULT_RULES: RuleConfig = {
 
 /**
  * The two rule sets offered on the setup screen.
- * original: the spec's recommended playtest rules, unchanged.
- * piggy: the same game with two changes chosen from simulated play —
- *   1. Bankrupt leaves the victim their smallest pile (almost nobody ends on $0);
- *   2. a 2-player game uses 4 Vault Locks and 4 Sheriffs, so attacks land more often.
+ * original: the creator's game. Whoever draws Bankrupt loses their own bank
+ *   unless they play Vault Lock, and the game ends the moment the sixth is drawn.
+ * piggy: the same game with a softer landing, chosen from simulated play —
+ *   1. a bankrupted player keeps their smallest pile (far fewer $0 finishes);
+ *   2. after the sixth Bankrupt everyone gets one last turn;
+ *   3. a 2-player game uses 4 Vault Locks and 4 Sheriffs (fewer dead turns).
  */
 export const RULE_SETS = {
-  piggy: { ...DEFAULT_RULES, bankruptDestroys: 'all_but_smallest_pile', twoPlayerDefenseCopies: 4 },
   original: DEFAULT_RULES,
+  piggy: {
+    ...DEFAULT_RULES,
+    bankruptDestroys: 'all_but_smallest_pile',
+    endTrigger: 'final_circuit',
+    twoPlayerDefenseCopies: 4,
+  },
 } as const satisfies Record<string, RuleConfig>;
 
 export type RuleSetId = keyof typeof RULE_SETS;

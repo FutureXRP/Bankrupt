@@ -134,7 +134,8 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const myTurn = iAmActor && state.phase === 'action';
   const pending = state.pendingAttack;
   const stealing = iAmActor && state.phase === 'theft_selection';
-  const defending = iAmActor && state.phase === 'reaction';
+  const defending = iAmActor && (state.phase === 'reaction' || state.phase === 'bankrupt_draw');
+  const trap = state.rules.bankruptMode === 'trap';
 
   // What the current selection can do.
   const picked = seat.hand.filter((c) => selected.includes(c.id));
@@ -176,7 +177,8 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   else if (needsHandoff) status = `Waiting for ${actorPlayer!.name}`;
   else if (myTurn) status = solo ? 'Your turn' : `${seat.name}'s turn`;
   else if (stealing) status = `Choose a card to steal from ${nameOf(state, pending!.targetId)}'s bank`;
-  else if (defending) status = 'You are under attack!';
+  else if (defending) status = state.phase === 'bankrupt_draw' ? 'You drew BANKRUPT!' : 'You are under attack!';
+  else if (state.phase === 'bankrupt_draw') status = `${actorPlayer!.name} drew BANKRUPT…`;
   else if (state.phase === 'reaction') status = `${actorPlayer!.name} is deciding whether to block…`;
   else if (state.phase === 'theft_selection') status = `${actorPlayer!.name} is choosing what to steal…`;
   else status = `${actorPlayer!.name} is thinking…`;
@@ -194,7 +196,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
           role="img"
           aria-label={`Bankrupt cards revealed: ${state.bankruptDrawnCount} of ${BANKRUPT_TOTAL}`}
         >
-          <span className="counter__label">Bankrupt cards revealed</span>
+          <span className="counter__label">{trap ? 'Bankrupt cards drawn' : 'Bankrupt cards revealed'}</span>
           <span className="counter__pips" aria-hidden="true">
             {Array.from({ length: BANKRUPT_TOTAL }, (_, i) => (
               <span key={i} className={`pip${i < state.bankruptDrawnCount ? ' pip--on' : ''}`} />
@@ -329,7 +331,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
         </div>
       </section>
 
-      {defending && pending && (
+      {defending && (
         <DefensePrompt
           state={state}
           defender={seat}
@@ -342,7 +344,9 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
           <div className="dialog">
             <h2 id="handoff-title">Pass to {actorPlayer!.name}</h2>
             <p>
-              {state.phase === 'reaction'
+              {state.phase === 'bankrupt_draw'
+                ? `${actorPlayer!.name}, you drew BANKRUPT!`
+                : state.phase === 'reaction'
                 ? `${actorPlayer!.name}, you are under attack!`
                 : state.phase === 'theft_selection'
                   ? `${actorPlayer!.name}, choose what to steal.`
@@ -423,18 +427,18 @@ function DefensePrompt({
   defender: Player;
   onAnswer: (cardId: string | null) => void;
 }) {
-  const pending = state.pendingAttack!;
-  const defense = defender.hand.find((c) => c.kind === DEFENSE_FOR[pending.kind])!;
-  const attacker = nameOf(state, pending.attackerId);
+  const pending = state.pendingAttack;
+  const kind = pending?.kind ?? 'bankrupt';
+  const defense = defender.hand.find((c) => c.kind === DEFENSE_FOR[kind])!;
   const saved = sumMoney(pileSavedFromBankrupt(defender.bank, state.rules));
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="defense-title">
-      <div className={`dialog dialog--${pending.kind}`}>
+      <div className={`dialog dialog--${kind}`}>
         <h2 id="defense-title">
-          {attacker} played {CARD_NAMES[pending.kind]} on you!
+          {pending ? `${nameOf(state, pending.attackerId)} played ${CARD_NAMES[kind]} on you!` : 'You drew BANKRUPT!'}
         </h2>
         <p>
-          {pending.kind === 'bankrupt'
+          {kind === 'bankrupt'
             ? saved > 0
               ? `You will lose $${sumMoney(defender.bank) - saved} and keep only your smallest pile ($${saved}) unless you block it.`
               : `Your whole bank ($${sumMoney(defender.bank)}) will be wiped out unless you block it.`
@@ -475,7 +479,7 @@ function EndScreen({ state, onPlayAgain, onExit }: { state: GameState; onPlayAga
                 <th scope="col">#</th>
                 <th scope="col">Player</th>
                 <th scope="col">Banked</th>
-                <th scope="col">Bankrupt used / blocked</th>
+                <th scope="col">{state.rules.bankruptMode === 'trap' ? 'Bankrupts drawn / blocked' : 'Bankrupt used / blocked'}</th>
                 <th scope="col">Thief used / blocked</th>
                 <th scope="col">Best bank turn</th>
               </tr>

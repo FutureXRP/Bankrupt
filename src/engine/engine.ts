@@ -1,4 +1,4 @@
-// Turn actions, reactions, refill and endgame (spec §6–§11).
+// Turn actions, reactions, refill and endgame.
 
 import { BANKRUPT_TOTAL, CARD_NAMES, DEFENSE_FOR, cardName, sumMoney, type AttackKind, type Card } from './cards';
 import { nextRandom } from './rng';
@@ -56,6 +56,10 @@ export function applyAction(prev: GameState, action: Action): GameState {
       break;
     }
     case 'defend': {
+      if (s.phase === 'bankrupt_draw') {
+        answerDrawnBankrupt(s, player, action.cardId);
+        break;
+      }
       if (action.cardId === null) {
         resolveUnblocked(s);
         break;
@@ -97,18 +101,23 @@ export function applyAction(prev: GameState, action: Action): GameState {
   return s;
 }
 
+/** Empties a bank (except any pile the rules let the owner keep) and reports the dollars lost and kept. */
+function wipeBank(s: GameState, victim: Player): { lost: number; kept: number } {
+  const kept = pileSavedFromBankrupt(victim.bank, s.rules);
+  const destroyed = victim.bank.filter((c) => !kept.includes(c));
+  s.discardPile.push(...destroyed);
+  victim.bank = kept;
+  return { lost: sumMoney(destroyed), kept: sumMoney(kept) };
+}
+
 function resolveUnblocked(s: GameState) {
   const pending = s.pendingAttack!;
   const attacker = byId(s, pending.attackerId);
   const target = byId(s, pending.targetId);
 
   if (pending.kind === 'bankrupt') {
-    const kept = pileSavedFromBankrupt(target.bank, s.rules);
-    const destroyed = target.bank.filter((c) => !kept.includes(c));
-    const lost = sumMoney(destroyed);
-    s.discardPile.push(...destroyed);
-    target.bank = kept;
-    const saved = kept.length > 0 ? ` They keep $${sumMoney(kept)}.` : '';
+    const { lost, kept } = wipeBank(s, target);
+    const saved = kept > 0 ? ` They keep $${kept}.` : '';
     log(
       s,
       'bankrupt',
@@ -151,30 +160,89 @@ function completeTheft(s: GameState, cardId: string) {
   endTurn(s);
 }
 
-/** Refill the active player's hand, check the countdown, and pass the turn. */
+/** The active player's action is over: refill their hand, then pass the turn. */
 function endTurn(s: GameState) {
   s.pendingAttack = undefined;
   s.bankedThisTurn = 0;
-  const player = s.players[s.currentPlayerIndex];
-  const wasFinalTurn = !!s.finalRound;
+  refill(s);
+}
 
-  let bankruptsDrawn = 0;
+const counter = (s: GameState) => `${s.bankruptDrawnCount} / ${BANKRUPT_TOTAL}`;
+
+/** In trap mode with an immediate ending, the sixth Bankrupt stops everything. */
+const trapEndsGameNow = (s: GameState) =>
+  s.rules.bankruptMode === 'trap' && s.rules.endTrigger === 'immediate' && s.bankruptDrawnCount >= BANKRUPT_TOTAL;
+
+/**
+ * Draw up to the hand limit, one card at a time. In trap mode a drawn Bankrupt
+ * hits the player who drew it; if they hold a Vault Lock the refill pauses for
+ * their decision and resumes afterwards.
+ */
+function refill(s: GameState) {
+  const player = s.players[s.currentPlayerIndex];
   while (player.hand.length < s.rules.handSize && s.drawPile.length > 0) {
     const card = s.drawPile.pop()!;
-    player.hand.push(card);
-    if (card.kind === 'bankrupt') {
-      s.bankruptDrawnCount++;
-      bankruptsDrawn++;
+    if (card.kind !== 'bankrupt') {
+      player.hand.push(card);
+      continue;
     }
-  }
-  if (bankruptsDrawn > 0) {
-    const what = bankruptsDrawn === 1 ? 'A Bankrupt card was' : `${bankruptsDrawn} Bankrupt cards were`;
-    log(s, 'draw', `${what} drawn — ${s.bankruptDrawnCount} / ${BANKRUPT_TOTAL} revealed.`, player.id);
-  }
+    s.bankruptDrawnCount++;
 
-  if (wasFinalTurn) {
-    s.finalRound!.turnsRemaining--;
-    if (s.finalRound!.turnsRemaining <= 0) return finish(s);
+    if (s.rules.bankruptMode === 'attack') {
+      player.hand.push(card);
+      log(s, 'draw', `A Bankrupt card was drawn — ${counter(s)} revealed.`, player.id);
+      continue;
+    }
+
+    s.discardPile.push(card);
+    player.stats.bankruptPlayed++;
+    if (player.bank.length === 0) {
+      log(s, 'draw', `${player.name} drew BANKRUPT (${counter(s)}) — but had nothing in the bank to lose.`, player.id);
+    } else if (player.hand.some((c) => c.kind === 'vault_lock')) {
+      s.phase = 'bankrupt_draw';
+      s.pendingDraw = { playerId: player.id };
+      log(s, 'attack', `${player.name} drew BANKRUPT (${counter(s)})!`, player.id, player.id);
+      return; // wait for the Vault Lock decision
+    } else {
+      bankruptDrawer(s, player);
+    }
+    if (trapEndsGameNow(s)) break;
+  }
+  finishTurn(s);
+}
+
+function bankruptDrawer(s: GameState, player: Player) {
+  const { lost, kept } = wipeBank(s, player);
+  const saved = kept > 0 ? ` They keep $${kept}.` : '';
+  log(
+    s,
+    'bankrupt',
+    `${player.name} drew BANKRUPT (${counter(s)}) — $${lost} wiped out!${saved}`,
+    player.id,
+    player.id,
+  );
+}
+
+function answerDrawnBankrupt(s: GameState, player: Player, cardId: string | null) {
+  s.pendingDraw = undefined;
+  s.phase = 'action';
+  if (cardId === null) {
+    bankruptDrawer(s, player);
+  } else {
+    s.discardPile.push(takeFromHand(player, cardId));
+    player.stats.bankruptBlocked++;
+    log(s, 'block', `${player.name}'s Vault Lock saved the bank from BANKRUPT!`, player.id);
+  }
+  if (trapEndsGameNow(s)) finishTurn(s);
+  else refill(s);
+}
+
+/** Check the countdown and pass the turn (or end the game). */
+function finishTurn(s: GameState) {
+  const player = s.players[s.currentPlayerIndex];
+  if (s.finalRound) {
+    s.finalRound.turnsRemaining--;
+    if (s.finalRound.turnsRemaining <= 0) return finish(s);
   } else if (s.bankruptDrawnCount >= BANKRUPT_TOTAL) {
     if (s.rules.endTrigger === 'immediate') return finish(s);
     s.finalRound = { triggeredByPlayerId: player.id, turnsRemaining: s.players.length };
@@ -189,8 +257,8 @@ function endTurn(s: GameState) {
 export type Standing = { playerId: string; name: string; total: number; cards: number; rank: number };
 
 /**
- * Final scoring (spec §3, §25 #10): most banked money wins; ties go to the player
- * with more banked cards; if that also ties, the win is shared.
+ * Final scoring: most banked money wins; ties go to the player with more banked
+ * cards; if that also ties, the win is shared.
  */
 export function scoreGame(state: GameState): { standings: Standing[]; winnerIds: string[] } {
   const rows = state.players
@@ -206,6 +274,7 @@ export function scoreGame(state: GameState): { standings: Standing[]; winnerIds:
 function finish(s: GameState) {
   s.phase = 'finished';
   s.pendingAttack = undefined;
+  s.pendingDraw = undefined;
   const { standings, winnerIds } = scoreGame(s);
   s.winnerIds = winnerIds;
   const names = winnerIds.map((id) => byId(s, id).name);

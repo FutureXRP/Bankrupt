@@ -2,12 +2,14 @@
 
 **Build your fortune. Protect your bank. Bankrupt your friends.**
 
-A browser version of BANKRUPT, an original 2–4 player card game. Players bank matching money cards, rob and
-bankrupt each other, and defend with Vault Lock and Sheriff. When the sixth Bankrupt card is drawn, everyone
-gets one last turn and the richest bank wins.
+A browser version of BANKRUPT, an original 2–4 player card game. Players bank matching money cards and rob
+each other with Bank Thief, while six Bankrupt cards hide in the deck. Draw one and your own bank is wiped out,
+unless you hold a Vault Lock. When the sixth Bankrupt is drawn the game is over and the richest bank wins.
 
-The full design is in [`build.md`](./build.md). This repository is the playable browser MVP (Milestone 2 of
-that document).
+**Play it:** https://futurexrp.github.io/Bankrupt/
+
+The first design document is in [`build.md`](./build.md). The creator has since corrected how Bankrupt works;
+the correction is noted at the top of that file and this game follows it.
 
 ## Run it
 
@@ -32,58 +34,55 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 ## What is in the game
 
 - The exact 80-card deck and setup: deal from the 74 non-Bankrupt cards, then shuffle the six Bankrupt cards in.
-- One action per turn: bank a matching set, play Bank Thief, play Bankrupt, or discard when stuck.
-- Vault Lock and Sheriff as one-use reactions, with a prompt when you are attacked.
-- A choice of Piggy Bank or Original rules on the setup screen (see below).
-- The Bankrupt Draw Counter, the Final Round, scoring and tie-breaks.
+- One action per turn: bank a matching set, play Bank Thief, or discard when stuck. Then refill to six cards.
+- Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
+- The Bankrupt counter, scoring and tie-breaks.
+- A choice of Original or Piggy Bank rules on the setup screen (see below).
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
 - Local pass-and-play for 2–4 people on one device, with a privacy screen between turns.
 - An unfinished solo game is saved in the browser and can be continued from the menu.
 - How to Play, Settings (computer speed, sound, reduced motion, text size) and Credits screens.
 
-Not built yet: online rooms, the step-by-step interactive tutorial (there is a rules page and a practice
+Not built yet: online rooms, a step-by-step interactive tutorial (there is a rules page and a practice
 match instead), final illustrations and card-flight animations, and browser end-to-end tests in the repo.
 
 ## Two rule sets
 
-The setup screen offers two versions of the game. Both live in [`src/engine/rules.ts`](./src/engine/rules.ts).
+Both live in [`src/engine/rules.ts`](./src/engine/rules.ts).
 
-**Original** is the spec's recommended playtest rules, unchanged.
+**Original** (the default) is the creator's game:
 
-**Piggy Bank** (the default) is the same game with two changes, chosen after simulating 3,000
-computer-vs-computer games per setup:
+- Nobody holds or plays Bankrupt. The player who **draws** one loses their whole bank, unless they play a
+  Vault Lock from their hand. An empty bank loses nothing.
+- The game ends the moment the sixth Bankrupt is drawn.
 
-| Change | Why | What the simulation showed |
-|---|---|---|
-| Bankrupt wipes out the bank except the victim's smallest pile (a one-pile bank is still lost entirely) | Ending on $0 with no way back is the least fun moment in the game | Players finishing on $0 fell from about 17% to under 1%; everything else stayed about the same |
-| A 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box | With one opponent, defenses pile up and attacks rarely land | Blocked Bankrupts fell from 70% to 52%; turns with nothing to play fell from 15% to 5% |
+**Piggy Bank** is the same game with a softer landing, chosen after simulating 3,000 computer-vs-computer
+games per setup:
+
+| Change | What the simulation showed (Original → Piggy Bank) |
+|---|---|
+| A bankrupted player keeps their smallest pile (a one-pile bank is still lost entirely) | Players finishing on $0: about 23% → about 1%, together with the next change |
+| After the sixth Bankrupt, everyone gets one last turn | Turns each in a 4-player game: about 5 → about 6 |
+| A 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box | Turns with nothing to play in 2-player games: about 19% → about 7% |
 
 Simulations measure balance, not fun. Whether Piggy Bank rules stay is the creator's call.
 
-Two other ideas were tried and shelved; their switches remain in the rules file:
+## Rules still to confirm with the creator
 
-- `turnStyle: 'bank_then_attack'` (bank several sets, then attack). Games became too short — about 5 turns each
-  with 4 players — and the choice between banking and attacking disappeared.
-- `stuckDiscardLimit` (a stuck player dumps several cards and redraws). It barely reduced dead turns. The
-  interface only discards one card at a time.
+These follow the first design document's suggestions and have not been confirmed. Each is a switch in the
+rules file:
 
-## Rules waiting for the creator's approval
+| Decision | In the game now | Switch |
+|---|---|---|
+| Smallest set that can be banked | 2 matching cards | `minBankSetSize` |
+| What Bank Thief takes | One card the thief chooses | `thiefSteals`: `chosen_card`, `random_card` or `matching_group` |
+| Discarding when a move is available | Not allowed | `discardOnlyWhenStuck` |
+| Choosing not to play a Vault Lock or Sheriff | Allowed | `allowDeclineDefense` |
+| Ties | Most banked cards wins, then shared | fixed in the engine |
 
-The spec marks ten decisions as still needing sign-off (§25). Both rule sets use the recommended playtest
-default for each. The ones most likely to change are switches in the rules file:
-
-| # | Decision | Default in the game | How to change it |
-|---|---|---|---|
-| 2 | Smallest set that can be banked | 2 matching cards | `minBankSetSize` |
-| 4 | What Bank Thief takes | One card the thief chooses | `thiefSteals`: `chosen_card`, `random_card` or `matching_group` |
-| 7 | Discarding when a move is available | Not allowed | `discardOnlyWhenStuck` |
-| 9 | When the sixth Bankrupt is drawn | Everyone gets one final turn | `endTrigger`: `final_circuit` or `immediate` |
-| — | Declining to play a defense | Allowed | `allowDeclineDefense` |
-
-The others are fixed in the engine for now: one action per turn (#3), Vault Lock and Sheriff as one-use
-reactions (#5, #6), refill to six at the end of the turn (#8), and ties going to the most banked cards and
-then shared (#10). A Vault Lock that stays on the table would need new engine work.
+Variants that were tried and shelved also remain as switches: `bankruptMode: 'attack'` (the first document's
+reading, where Bankrupt is played on an opponent), `turnStyle: 'bank_then_attack'` and `stuckDiscardLimit`.
 
 The creator credit shown on the menu and Credits screen is a placeholder in
 [`src/ui/branding.ts`](./src/ui/branding.ts) until she chooses how she wants to be named.
@@ -94,7 +93,7 @@ The creator credit shown on the menu and Credits screen is a placeholder in
 src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgame, invariants
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
 src/ui/       React screens, card faces, sounds, saved settings
-tests/        The acceptance tests from spec §22, rule-set tests and 3,000 simulated games
+tests/        Rules tests for both rule sets and the variants, plus 3,000 simulated games
 ```
 
 The engine is independent of the interface, so the same rules can later drive an online server or a mobile app.

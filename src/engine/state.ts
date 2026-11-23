@@ -23,7 +23,7 @@ export type Player = {
   stats: PlayerStats;
 };
 
-export type Phase = 'action' | 'reaction' | 'theft_selection' | 'finished';
+export type Phase = 'action' | 'reaction' | 'theft_selection' | 'bankrupt_draw' | 'finished';
 
 export type LogKind =
   | 'setup'
@@ -67,6 +67,8 @@ export type GameState = {
   bankruptDrawnCount: number;
   bankedThisTurn: number; // dollars the active player has banked so far this turn
   pendingAttack?: PendingAttack;
+  /** Trap mode: this player drew Bankrupt, holds a Vault Lock, and must decide whether to use it. */
+  pendingDraw?: { playerId: string };
   finalRound?: { triggeredByPlayerId: string; turnsRemaining: number };
   rngState: number;
   actionLog: LogEntry[];
@@ -98,6 +100,7 @@ export function cloneState(s: GameState): GameState {
     discardPile: [...s.discardPile],
     removed: [...s.removed],
     pendingAttack: s.pendingAttack ? { ...s.pendingAttack } : undefined,
+    pendingDraw: s.pendingDraw ? { ...s.pendingDraw } : undefined,
     finalRound: s.finalRound ? { ...s.finalRound } : undefined,
     actionLog: [...s.actionLog],
     winnerIds: s.winnerIds ? [...s.winnerIds] : undefined,
@@ -113,6 +116,8 @@ export function actorId(state: GameState): string | null {
       return state.pendingAttack!.targetId;
     case 'theft_selection':
       return state.pendingAttack!.attackerId;
+    case 'bankrupt_draw':
+      return state.pendingDraw!.playerId;
     default:
       return null;
   }

@@ -171,25 +171,25 @@ export function Setup({
         <div className="segmented">
           <button
             type="button"
-            className={`btn${ruleSet === 'piggy' ? ' btn--primary' : ''}`}
-            aria-pressed={ruleSet === 'piggy'}
-            onClick={() => setRuleSet('piggy')}
-          >
-            Piggy Bank
-          </button>
-          <button
-            type="button"
             className={`btn${ruleSet === 'original' ? ' btn--primary' : ''}`}
             aria-pressed={ruleSet === 'original'}
             onClick={() => setRuleSet('original')}
           >
             Original
           </button>
+          <button
+            type="button"
+            className={`btn${ruleSet === 'piggy' ? ' btn--primary' : ''}`}
+            aria-pressed={ruleSet === 'piggy'}
+            onClick={() => setRuleSet('piggy')}
+          >
+            Piggy Bank
+          </button>
         </div>
         <p className="note">
-          {ruleSet === 'piggy'
-            ? 'Bankrupt wipes out your bank but you keep your smallest pile. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.'
-            : 'The first rules: Bankrupt wipes out the whole bank, and every game uses all 80 cards.'}
+          {ruleSet === 'original'
+            ? 'Draw a Bankrupt card and your whole bank is gone unless you play Vault Lock. The game ends the moment the sixth Bankrupt is drawn.'
+            : 'A gentler twist: when you go bankrupt you keep your smallest pile, and everyone gets one last turn after the sixth Bankrupt. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.'}
         </p>
       </fieldset>
 
@@ -210,8 +210,8 @@ const REFERENCE: { card: Card; text: string }[] = [
   { card: { id: 'ref-25', kind: 'money', value: 25 }, text: '14 in the deck.' },
   { card: { id: 'ref-50', kind: 'money', value: 50 }, text: '14 in the deck.' },
   { card: { id: 'ref-100', kind: 'money', value: 100 }, text: '14 in the deck.' },
-  { card: { id: 'ref-b', kind: 'bankrupt' }, text: "Wipes out an opponent's bank — they keep only their smallest pile. Blocked by Vault Lock. 6 in the deck." },
-  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Play it when you are hit by Bankrupt to cancel it. Used once. 6 in the deck.' },
+  { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. 6 hidden in the deck.' },
+  { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the deck.' },
   { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the deck." },
   { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the deck.' },
 ];
@@ -231,37 +231,37 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
             <strong>Bank</strong> 2 or more matching money cards (two $100s bank $200), <em>or</em>
           </li>
           <li>
-            play <strong>Bank Thief</strong> to steal one money card from an opponent's bank, <em>or</em>
+            play <strong>Bank Thief</strong> to steal one money card from an opponent's bank.
           </li>
-          <li>
-            play <strong>Bankrupt</strong> to wipe out an opponent's bank. They keep only their smallest pile.
-          </li>
-          <li>If you cannot do any of those, discard one card.</li>
+          <li>If you cannot do either, discard one card.</li>
         </ul>
         <p>Then you draw back up to 6 cards. Discarded cards never come back.</p>
 
-        <h2>When you are attacked</h2>
+        <h2>Watch out — Bankrupt!</h2>
         <p>
-          <strong>Vault Lock</strong> stops Bankrupt. <strong>Sheriff</strong> stops Bank Thief. Each one is used up when
-          you play it. Banks are face-up for everyone to see — a big bank is a big target.
+          Six <strong>Bankrupt</strong> cards are hiding in the deck. If you <strong>draw</strong> one, your whole bank
+          is wiped out — unless you have a <strong>Vault Lock</strong> in your hand to save it. Nobody holds or plays
+          Bankrupt cards; they go off the moment they are drawn. If your bank is empty, you got lucky.
         </p>
 
-        <h2>The countdown</h2>
+        <h2>Thieves and Sheriffs</h2>
         <p>
-          There are 6 Bankrupt cards in the deck. Every time one is <strong>drawn</strong>, the counter goes up. When the
-          sixth is drawn, everybody gets one final turn. Then the richest bank wins. If two banks tie, the one with more
-          cards wins; if that ties too, the win is shared.
+          When someone plays Bank Thief on you, play a <strong>Sheriff</strong> to stop it. Banks are face-up for
+          everyone to see — a big bank is a big target.
         </p>
 
-        <h2>Two ways to play</h2>
+        <h2>How it ends</h2>
         <p>
-          <strong>Piggy Bank rules</strong> (the ones described here): when you are bankrupted you keep your smallest
-          pile — the one worth the least. If your bank is only one pile, it is all gone. In a 2-player game, 2 Vault
-          Locks and 2 Sheriffs are left in the box.
+          The counter shows how many Bankrupt cards have been drawn. When the <strong>sixth</strong> one is drawn, the
+          game is over right away and the richest bank wins. If two banks tie, the one with more cards wins; if that
+          ties too, the win is shared.
         </p>
+
+        <h2>Piggy Bank rules — a gentler twist</h2>
         <p>
-          <strong>Original rules:</strong> Bankrupt wipes out the whole bank, and every game uses all 80 cards. Pick
-          the rules on the Game Setup screen.
+          On the Game Setup screen you can switch to Piggy Bank rules. When you go bankrupt you keep your smallest
+          pile (the one worth the least — but a one-pile bank is still all gone). After the sixth Bankrupt, everyone
+          gets one last turn. In a 2-player game, 2 Vault Locks and 2 Sheriffs are left in the box.
         </p>
 
         <h2>The cards</h2>
@@ -275,8 +275,7 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
         ))}
       </ul>
       <p className="note">
-        These are playtest rules. The creator has the final say on all of them — including whether Piggy Bank rules
-        stay.
+        The creator has the final say on every rule — including whether Piggy Bank rules stay.
       </p>
       <button type="button" className="btn btn--primary btn--wide" onClick={onPractice}>
         Play a practice match
@@ -350,7 +349,7 @@ export function Credits({ onBack }: { onBack: () => void }) {
         <p className="credits__creator">
           BANKRUPT was invented by <strong>{CREATOR_CREDIT}</strong>.
         </p>
-        <p>Card names, the six-card hand, the 80-card deck and the Bankrupt countdown are all from the original game.</p>
+        <p>The cards, the six-card hand, the 80-card deck and the Bankrupt trap are all from the original game.</p>
         <p>
           BANKRUPT uses pretend money only. There is no betting and nothing to buy.
         </p>

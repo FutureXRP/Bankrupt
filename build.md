@@ -1,4 +1,11 @@
 # BANKRUPT
+
+> **Correction from the creator (after this document was written).** Bankrupt is **not** an attack card.
+> Nobody holds or plays it. The player who **draws** a Bankrupt card loses their own bank, unless they play a
+> Vault Lock from their hand. The game ends the moment the sixth Bankrupt is drawn — there is no Final Round.
+> Wherever the sections below describe Bankrupt as a card played on an opponent, or a final circuit of turns,
+> this correction wins. The game in this repository follows the correction; see the README.
+
 ## Complete Game Rulebook & Digital Product Specification
 
 **Version:** 1.0 — Playtest Draft  

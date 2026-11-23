@@ -92,6 +92,9 @@ describe('simulated games', () => {
   it('rule variants also finish cleanly', () => {
     const variants: Partial<RuleConfig>[] = [
       RULE_SETS.piggy,
+      { bankruptMode: 'attack', endTrigger: 'final_circuit' },
+      { bankruptMode: 'attack', endTrigger: 'immediate' },
+      { endTrigger: 'final_circuit' },
       { turnStyle: 'bank_then_attack', discardOnlyWhenStuck: false },
       { stuckDiscardLimit: 6 },
       { thiefSteals: 'random_card' },
