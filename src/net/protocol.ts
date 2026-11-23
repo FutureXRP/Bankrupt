@@ -21,6 +21,7 @@ export type LobbyInfo = {
   ruleSet: RuleSetId;
   extras: Extras;
   matchTarget: number;
+  matchCarry: boolean;
   difficulty: Difficulty;
 };
 

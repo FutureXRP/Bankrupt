@@ -106,9 +106,18 @@ export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (
   );
 }
 
-export function MatchPicker({ target, onChange }: { target: number; onChange: (target: number) => void }) {
+export function MatchPicker({
+  target,
+  carryOver,
+  onChange,
+}: {
+  target: number;
+  carryOver: boolean;
+  onChange: (target: number, carryOver: boolean) => void;
+}) {
+  const carrying = carryOver && target > 1;
   return (
-    <fieldset className="field">
+    <fieldset className="field extras">
       <legend>Match length</legend>
       <div className="segmented">
         {MATCH_LENGTHS.map((length) => (
@@ -117,23 +126,36 @@ export function MatchPicker({ target, onChange }: { target: number; onChange: (t
             type="button"
             className={`btn${target === length.target ? ' btn--primary' : ''}`}
             aria-pressed={target === length.target}
-            onClick={() => onChange(length.target)}
+            onClick={() => onChange(length.target, carryOver)}
           >
-            {length.name}
+            {carrying ? length.carryName : length.name}
           </button>
         ))}
       </div>
+      {target > 1 && (
+        <label>
+          <input type="checkbox" checked={carryOver} onChange={(e) => onChange(target, e.target.checked)} />
+          <span>
+            <strong>Carry cash over</strong> — start each new round with the money you banked in the last one.
+          </span>
+        </label>
+      )}
       <p className="note">
         {target === 1
           ? 'One game decides it.'
-          : `Play round after round with the same players. The first to win ${target} rounds wins the match.`}
+          : carrying
+            ? `Play ${target} rounds with the same players. Your bank carries into the next round as cash — where it can be spent, stolen or lost. The richest player after round ${target} wins the match.`
+            : `Play round after round with the same players. The first to win ${target} rounds wins the match.`}
       </p>
     </fieldset>
   );
 }
 
-export const matchLengthName = (target: number) =>
-  MATCH_LENGTHS.find((length) => length.target === target)?.name ?? `First to ${target} wins`;
+export function matchLengthName(target: number, carryOver = false): string {
+  const length = MATCH_LENGTHS.find((l) => l.target === target);
+  if (!length) return `First to ${target} wins`;
+  return carryOver && target > 1 ? `${length.carryName}, cash carried over` : length.name;
+}
 
 export function extrasSummary(extras: Extras): string {
   const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap and Lawyer cards'].filter(Boolean);
@@ -189,6 +211,7 @@ export function Setup({
   initialRuleSet,
   initialExtras,
   initialTarget,
+  initialCarryOver,
   onStart,
   onBack,
 }: {
@@ -196,13 +219,15 @@ export function Setup({
   initialRuleSet: RuleSetId;
   initialExtras: Extras;
   initialTarget: number;
-  onStart: (seats: SeatConfig[], ruleSet: RuleSetId, extras: Extras, target: number) => void;
+  initialCarryOver: boolean;
+  onStart: (seats: SeatConfig[], ruleSet: RuleSetId, extras: Extras, target: number, carryOver: boolean) => void;
   onBack: () => void;
 }) {
   const [seats, setSeats] = useState<SeatConfig[]>(initialSeats);
   const [ruleSet, setRuleSet] = useState<RuleSetId>(initialRuleSet);
   const [extras, setExtras] = useState<Extras>(initialExtras);
   const [target, setTarget] = useState(initialTarget);
+  const [carryOver, setCarryOver] = useState(initialCarryOver);
 
   const setCount = (count: number) =>
     setSeats((current) => {
@@ -300,14 +325,21 @@ export function Setup({
 
       <ExtrasPicker extras={extras} onChange={setExtras} />
 
-      <MatchPicker target={target} onChange={setTarget} />
+      <MatchPicker
+        target={target}
+        carryOver={carryOver}
+        onChange={(nextTarget, nextCarry) => {
+          setTarget(nextTarget);
+          setCarryOver(nextCarry);
+        }}
+      />
 
       {seats.filter((s) => !s.isAI).length > 1 && (
         <p className="note">Pass-and-play: the game hides each hand and asks you to pass the device between turns.</p>
       )}
       {duplicate && <p className="note note--warn">Give every player a different name.</p>}
 
-      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet, extras, target)}>
+      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet, extras, target, carryOver)}>
         Start Game
       </button>
     </Page>
@@ -461,6 +493,13 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           <strong>first to 3 wins</strong>. You play round after round with the same players, and the deal moves round
           the table each time. Every round is a full game; the richest bank wins the round. If two players win the
           deciding round together, the one who has banked more money across the whole match takes it.
+        </p>
+        <p>
+          <strong>Carry cash over</strong> is an option for matches. Instead of counting round wins, you play a set
+          number of rounds (2 or 3) and your money comes with you: whatever you banked in one round is in your bank
+          as cash at the start of the next. That cash can be spent in the shop, taken by a Big Heist or Bank Swap,
+          and wiped out by Bankrupt — so one bad draw can cost you everything you have built. The richest player
+          after the last round wins the match.
         </p>
 
         <h2>Playing together</h2>

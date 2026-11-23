@@ -14,6 +14,8 @@ export type GameOptions = {
   seed: number;
   rules?: Partial<RuleConfig>;
   dealerIndex?: number;
+  /** Cash each seat starts with, in seat order (used by carry-over matches). */
+  startingCash?: number[];
 };
 
 export function createGame(options: GameOptions): GameState {
@@ -46,7 +48,7 @@ export function createGame(options: GameOptions): GameState {
     difficulty: seat.isAI ? (seat.difficulty ?? 'casual') : undefined,
     hand: [],
     bank: [],
-    bonus: 0,
+    bonus: Math.max(0, Math.floor(options.startingCash?.[i] ?? 0)),
     insured: false,
     peek: [],
     stats: { bankruptPlayed: 0, bankruptBlocked: 0, thiefPlayed: 0, thiefBlocked: 0, largestBank: 0 },

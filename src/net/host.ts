@@ -11,6 +11,7 @@ import {
   matchWinnerIds,
   newMatch,
   recordRound,
+  startingCashFor,
   maskStateFor,
   randomSeed,
   rulesFor,
@@ -50,6 +51,7 @@ export class HostRoom {
   ruleSet: RuleSetId = 'original';
   extras: Extras = DEFAULT_EXTRAS;
   matchTarget = 1;
+  matchCarry = false;
   match: MatchState = newMatch(1);
   game: { id: number; state: GameState } | null = null;
   version = 0;
@@ -251,6 +253,7 @@ export class HostRoom {
       ruleSet: this.ruleSet,
       extras: this.extras,
       matchTarget: this.matchTarget,
+      matchCarry: this.matchCarry,
       difficulty: this.difficulty,
     };
   }
@@ -259,12 +262,13 @@ export class HostRoom {
     return MAX_PLAYERS - 1 - this.guests.length;
   }
 
-  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId; extras?: Extras; matchTarget?: number }) {
+  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId; extras?: Extras; matchTarget?: number; matchCarry?: boolean }) {
     if (patch.computers !== undefined) this.computers = Math.max(0, Math.min(patch.computers, this.maxComputers()));
     if (patch.difficulty) this.difficulty = patch.difficulty;
     if (patch.ruleSet) this.ruleSet = patch.ruleSet;
     if (patch.extras) this.extras = patch.extras;
     if (patch.matchTarget) this.matchTarget = patch.matchTarget;
+    if (patch.matchCarry !== undefined) this.matchCarry = patch.matchCarry;
     this.sendLobby();
     this.changed();
   }
@@ -286,7 +290,7 @@ export class HostRoom {
       ...this.guests.map((g) => ({ name: g.name, isAI: false })),
       ...AI_NAMES.slice(0, this.computers).map((name) => ({ name, isAI: true, difficulty: this.difficulty })),
     ];
-    this.match = newMatch(this.matchTarget, Math.floor(Math.random() * seats.length));
+    this.match = newMatch(this.matchTarget, Math.floor(Math.random() * seats.length), this.matchCarry);
     const state = this.deal(seats);
     this.seatByConn.clear();
     this.emptySeats.clear();
@@ -301,6 +305,7 @@ export class HostRoom {
       seed: randomSeed(),
       rules: rulesFor(this.ruleSet, this.extras),
       dealerIndex: dealerForRound(this.match, seats.length),
+      startingCash: startingCashFor(this.match, seats.map((_, i) => `p${i + 1}`)),
     });
     this.game = { id: Date.now(), state };
     return state;

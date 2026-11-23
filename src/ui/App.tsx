@@ -6,6 +6,7 @@ import {
   matchWinnerIds,
   newMatch,
   recordRound,
+  startingCashFor,
   randomSeed,
   rulesFor,
   type Extras,
@@ -59,6 +60,7 @@ export function App() {
       seed: randomSeed(),
       rules: rulesFor(nextRules, nextExtras),
       dealerIndex: dealerForRound(nextMatch, nextSeats.length),
+      startingCash: startingCashFor(nextMatch, nextSeats.map((_, i) => `p${i + 1}`)),
     });
     setMatch(nextMatch);
     setGame({ key: Date.now(), state });
@@ -71,11 +73,12 @@ export function App() {
     nextRules: RuleSetId = ruleSet,
     nextExtras: Extras = extras,
     target: number = match.target,
+    carryOver: boolean = match.carryOver,
   ) => {
     setSeats(nextSeats);
     setRuleSet(nextRules);
     setExtras(nextExtras);
-    deal(nextSeats, nextRules, nextExtras, newMatch(target, Math.floor(Math.random() * nextSeats.length)));
+    deal(nextSeats, nextRules, nextExtras, newMatch(target, Math.floor(Math.random() * nextSeats.length), carryOver));
   };
 
   /** After a finished round: deal the next round, or a fresh match if this one is over. */
@@ -125,7 +128,7 @@ export function App() {
         />
       ) : null;
     case 'setup':
-      return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} initialTarget={match.target} onStart={start} onBack={toMenu} />;
+      return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} initialTarget={match.target} initialCarryOver={match.carryOver} onStart={start} onBack={toMenu} />;
     case 'howto':
       return (
         <HowToPlay
@@ -140,6 +143,7 @@ export function App() {
               'original',
               extras,
               1,
+              false,
             )
           }
         />

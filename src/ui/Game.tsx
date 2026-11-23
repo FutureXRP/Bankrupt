@@ -317,13 +317,17 @@ export function Game({
 
       {isMultiRound(match) && (
         <p className="matchbar" aria-label="Match score">
-          <strong>Round {match.round}</strong>
-          <span>first to {match.target} wins</span>
-          {state.players.map((p) => (
-            <span key={p.id} className="matchbar__player">
-              {p.name} <b>{match.wins[p.id] ?? 0}</b>
-            </span>
-          ))}
+          <strong>
+            Round {match.round}
+            {match.carryOver ? ` of ${match.target}` : ''}
+          </strong>
+          <span>{match.carryOver ? 'cash carries over — richest at the end wins' : `first to ${match.target} wins`}</span>
+          {!match.carryOver &&
+            state.players.map((p) => (
+              <span key={p.id} className="matchbar__player">
+                {p.name} <b>{match.wins[p.id] ?? 0}</b>
+              </span>
+            ))}
         </p>
       )}
 
@@ -673,7 +677,11 @@ function EndScreen({
         {after && match ? (
           <>
             <p className="dialog__eyebrow">
-              {champions ? 'Match over' : `Round ${match.round} — ${winners.length > 1 ? 'shared win' : 'winner'}`}
+              {champions
+                ? 'Match over'
+                : after.carryOver
+                  ? `Round ${match.round} of ${after.target} — richest so far`
+                  : `Round ${match.round} — ${winners.length > 1 ? 'shared win' : 'winner'}`}
             </p>
             <h2 id="end-title">
               {champions
@@ -682,27 +690,43 @@ function EndScreen({
             </h2>
             <ul className="matchscore" aria-label="Match score">
               {[...state.players]
-                .sort((x, y) => (after.wins[y.id] ?? 0) - (after.wins[x.id] ?? 0) || (after.money[y.id] ?? 0) - (after.money[x.id] ?? 0))
+                .sort((x, y) =>
+                  after.carryOver
+                    ? (after.money[y.id] ?? 0) - (after.money[x.id] ?? 0)
+                    : (after.wins[y.id] ?? 0) - (after.wins[x.id] ?? 0) || (after.money[y.id] ?? 0) - (after.money[x.id] ?? 0),
+                )
                 .map((p) => (
                   <li key={p.id} className={champions?.includes(p.id) ? 'is-winner' : undefined}>
                     <strong>{p.name}</strong>
-                    <span
-                      className="matchscore__pips"
-                      role="img"
-                      aria-label={`${after.wins[p.id] ?? 0} of ${after.target} round wins`}
-                    >
-                      {Array.from({ length: after.target }, (_, i) => (
-                        <span key={i} className={`pip${i < (after.wins[p.id] ?? 0) ? ' pip--won' : ''}`} />
-                      ))}
-                    </span>
-                    <small>${after.money[p.id] ?? 0} banked in all</small>
+                    {after.carryOver ? (
+                      <small>
+                        {champions ? 'finishes with' : 'carries over'} <b>${after.money[p.id] ?? 0}</b>
+                      </small>
+                    ) : (
+                      <>
+                        <span
+                          className="matchscore__pips"
+                          role="img"
+                          aria-label={`${after.wins[p.id] ?? 0} of ${after.target} round wins`}
+                        >
+                          {Array.from({ length: after.target }, (_, i) => (
+                            <span key={i} className={`pip${i < (after.wins[p.id] ?? 0) ? ' pip--won' : ''}`} />
+                          ))}
+                        </span>
+                        <small>${after.money[p.id] ?? 0} banked in all</small>
+                      </>
+                    )}
                   </li>
                 ))}
             </ul>
             <p className="note">
-              {champions
-                ? `This round went to ${winners.join(' & ')} with $${standings[0].total}.`
-                : `First to ${after.target} round wins takes the match.`}
+              {after.carryOver
+                ? champions
+                  ? `${after.target} rounds played, with cash carried over.`
+                  : `Everyone starts round ${after.round} with this money in the bank. Richest after round ${after.target} wins.`
+                : champions
+                  ? `This round went to ${winners.join(' & ')} with $${standings[0].total}.`
+                  : `First to ${after.target} round wins takes the match.`}
             </p>
           </>
         ) : (

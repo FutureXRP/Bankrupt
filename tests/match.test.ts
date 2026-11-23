@@ -14,9 +14,10 @@ import {
   matchWinnerIds,
   newMatch,
   recordRound,
+  startingCashFor,
   type GameState,
 } from '../src/engine';
-import { blankGame, give } from './helpers';
+import { blankGame, give, stackTop } from './helpers';
 
 /** A finished 3-player game with the given banks (in $100 cards and $5 cards). */
 function finishedRound(banks: [number, number, number]): GameState {
@@ -58,6 +59,7 @@ describe('match play', () => {
     const before = newMatch(2);
     recordRound(before, finishedRound([100, 0, 0]));
     expect(before).toEqual(newMatch(2));
+    expect(before.carryOver).toBe(false);
   });
 
   it('a shared round win counts for both; money across the match breaks the tie', () => {
@@ -116,7 +118,111 @@ describe('match play', () => {
   });
 });
 
+describe('carry-over matches', () => {
+  it('lasts a set number of rounds and the richest fortune wins', () => {
+    let match = newMatch(2, 0, true);
+    expect(startingCashFor(match, ['p1', 'p2', 'p3'])).toBeUndefined(); // round 1 starts from nothing
+    match = recordRound(match, finishedRound([300, 100, 0]));
+    expect(matchWinnerIds(match)).toBeNull();
+    expect(startingCashFor(match, ['p1', 'p2', 'p3'])).toEqual([300, 100, 0]);
+    // The final bank of a round already includes what was carried in, so it is not added twice.
+    match = recordRound(match, finishedRound([200, 500, 100]));
+    expect(match.money).toEqual({ p1: 200, p2: 500, p3: 100 });
+    expect(matchWinnerIds(match)).toEqual(['p2']);
+  });
+
+  it('level fortunes go to the player with more round wins, then are shared', () => {
+    let match = newMatch(2, 0, true);
+    match = recordRound(match, finishedRound([300, 100, 0])); // Ava wins round 1
+    match = recordRound(match, finishedRound([400, 400, 0])); // Ava and Ben share round 2
+    expect(match.wins).toEqual({ p1: 2, p2: 1 });
+    expect(matchWinnerIds(match)).toEqual(['p1']);
+    const level = { ...match, wins: { p1: 1, p2: 1 } };
+    expect(matchWinnerIds(level)).toEqual(['p1', 'p2']);
+  });
+
+  it('a single game cannot carry over, and round-wins matches never start with cash', () => {
+    expect(newMatch(1, 0, true).carryOver).toBe(false);
+    let match = newMatch(2);
+    match = recordRound(match, finishedRound([300, 100, 0]));
+    expect(startingCashFor(match, ['p1', 'p2', 'p3'])).toBeUndefined();
+  });
+
+  it('the carried money starts the next round as cash in the bank, and can be lost', () => {
+    const rules = { ...RULE_SETS.original, shop: true };
+    const s = createGame({
+      players: ['A', 'B', 'C'].map((name) => ({ name, isAI: true })),
+      seed: 8,
+      rules,
+      startingCash: [300, 0, 125],
+    });
+    expect(s.players.map((p) => p.bonus)).toEqual([300, 0, 125]);
+    expect(s.players.map((p) => p.bank.length)).toEqual([0, 0, 0]);
+    // It counts as the bank straight away: it scores, and it pays for the shop.
+    const blank = blankGame(3, rules);
+    blank.players[0].bonus = 300;
+    give(blank, 0, 'hand', '$5', '$25');
+    stackTop(blank, 'bankrupt');
+    const bought = applyAction(blank, { type: 'buy', playerId: 'p1', item: 'inside_tip' });
+    expect(bought.players[0].bonus).toBe(275);
+    // …and a Bankrupt drawn with nothing but carried cash still wipes it out.
+    const after = applyAction(blank, { type: 'discard', playerId: 'p1', cardIds: [blank.players[0].hand[0].id] });
+    expect(after.players[0].bonus).toBe(0);
+  });
+
+  it('computer players can play a whole carry-over match', () => {
+    for (let seed = 1; seed <= 15; seed++) {
+      const rand = makeRng(seed);
+      let match = newMatch(3, 0, true);
+      const ids = ['p1', 'p2', 'p3'];
+      let rounds = 0;
+      while (!matchWinnerIds(match)) {
+        rounds++;
+        let s = createGame({
+          players: ['A', 'B', 'C'].map((name) => ({ name, isAI: true, difficulty: 'competitive' as const })),
+          seed: seed * 50 + rounds,
+          rules: { ...RULE_SETS.piggy, shop: true, bankSwapCards: 2 },
+          dealerIndex: dealerForRound(match, 3),
+          startingCash: startingCashFor(match, ids),
+        });
+        if (rounds > 1) expect(s.players.map((p) => p.bonus)).toEqual(ids.map((id) => match.money[id]));
+        while (s.phase !== 'finished') {
+          const id = actorId(s)!;
+          s = applyAction(s, chooseForPhase(getPlayerView(s, id), 'competitive', rand));
+        }
+        match = recordRound(match, s);
+      }
+      expect(rounds).toBe(3);
+      const winners = matchWinnerIds(match)!;
+      const richest = Math.max(...ids.map((id) => match.money[id]));
+      expect(winners.every((id) => match.money[id] === richest)).toBe(true);
+    }
+  });
+});
+
 describe('online messages', () => {
+  it("a guest's Bankrupt counter matches the host's in every mode, all game long", async () => {
+    const { maskStateFor, publicBankruptCount } = await import('../src/engine');
+    for (const rules of [RULE_SETS.attack, RULE_SETS.original, RULE_SETS.piggy]) {
+      const rand = makeRng(9);
+      let s = createGame({
+        players: ['A', 'B', 'C'].map((name) => ({ name, isAI: true, difficulty: 'competitive' as const })),
+        seed: 31,
+        rules,
+      });
+      let highest = 0;
+      while (s.phase !== 'finished') {
+        const id = actorId(s)!;
+        s = applyAction(s, chooseForPhase(getPlayerView(s, id), 'competitive', rand));
+        for (const seat of ['p1', 'p2', 'p3']) {
+          expect(publicBankruptCount(maskStateFor(s, seat))).toBe(publicBankruptCount(s));
+        }
+        highest = Math.max(highest, publicBankruptCount(s));
+      }
+      expect(highest).toBe(6);
+    }
+  });
+
   it('a long game still fits through the connection: big states are split and rebuilt exactly', async () => {
     const { toWire, Reassembler, PART_SIZE } = await import('../src/net/protocol');
     const { maskStateFor, GUEST_LOG_LENGTH } = await import('../src/engine');

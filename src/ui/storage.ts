@@ -34,7 +34,7 @@ export type SavedGame = {
 };
 
 const SETTINGS_KEY = 'bankrupt.settings.v1';
-const SAVE_KEY = 'bankrupt.save.v5';
+const SAVE_KEY = 'bankrupt.save.v6';
 
 function read<T>(key: string): T | null {
   try {

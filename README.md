@@ -79,7 +79,14 @@ On the setup screen (or in the host's lobby) a game can be made a match: **first
 wins**. The same players play round after round, each round a full game, with the deal moving one seat each
 time. A bar above the table shows the round and everyone's wins, and the end-of-round screen shows the match
 score. If two players reach the target in the same round (a shared round win), the one who has banked more
-across the whole match takes it. The scoring lives in [`src/engine/match.ts`](./src/engine/match.ts).
+across the whole match takes it.
+
+**Carry cash over** is an option for matches. The match is then a set number of rounds (2 or 3). Each player
+starts a new round with the money they finished the last one with, as cash in their bank, where it can be
+spent in the shop, taken by a Big Heist or Bank Swap, or wiped out by Bankrupt. The richest player after the
+last round wins the match; level fortunes go to the player with more round wins, and are otherwise shared.
+
+The scoring lives in [`src/engine/match.ts`](./src/engine/match.ts).
 
 ## Hand size and deck size
 

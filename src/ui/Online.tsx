@@ -275,7 +275,11 @@ function HostView({
 
       <ExtrasPicker extras={room.extras} onChange={(extras) => room.configure({ extras })} />
 
-      <MatchPicker target={room.matchTarget} onChange={(matchTarget) => room.configure({ matchTarget })} />
+      <MatchPicker
+        target={room.matchTarget}
+        carryOver={room.matchCarry}
+        onChange={(matchTarget, matchCarry) => room.configure({ matchTarget, matchCarry })}
+      />
 
       <button
         type="button"
@@ -364,7 +368,7 @@ function GuestView({
           </p>
           <p className="note">
             Extras: <strong>{extrasSummary(room.lobby.extras)}</strong>. Match:{' '}
-            <strong>{matchLengthName(room.lobby.matchTarget)}</strong>
+            <strong>{matchLengthName(room.lobby.matchTarget, room.lobby.matchCarry)}</strong>
           </p>
         </>
       )}

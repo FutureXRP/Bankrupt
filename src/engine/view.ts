@@ -104,8 +104,11 @@ export function maskStateFor(state: GameState, playerId: string): GameState {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank), peek: [] })),
     drawPile: state.drawPile.map(blank),
-    // Only the top of the discard pile is ever shown; the rest keeps its size.
-    discardPile: state.discardPile.map((card, i) => (i === state.discardPile.length - 1 ? card : blank())),
+    // To keep the message small, only the top of the discard pile is sent as it is. Bankrupt
+    // cards are kept too, because the counter (in Bankrupt Attack mode) is counted from them.
+    discardPile: state.discardPile.map((card, i) =>
+      i === state.discardPile.length - 1 || card.kind === 'bankrupt' ? card : blank(),
+    ),
     actionLog: state.actionLog.slice(-GUEST_LOG_LENGTH),
     removed: [],
     refillQueue: [],
