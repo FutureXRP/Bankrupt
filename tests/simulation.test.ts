@@ -92,6 +92,7 @@ describe('simulated games', () => {
   it('rule variants also finish cleanly', () => {
     const variants: Partial<RuleConfig>[] = [
       RULE_SETS.piggy,
+      RULE_SETS.attack,
       { bankruptMode: 'attack', endTrigger: 'final_circuit' },
       { bankruptMode: 'attack', endTrigger: 'immediate' },
       { endTrigger: 'final_circuit' },

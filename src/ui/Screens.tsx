@@ -8,6 +8,27 @@ import type { Settings } from './storage';
 
 const AI_NAMES = ['Penny', 'Buck', 'Goldie'];
 
+const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = [
+  {
+    id: 'original',
+    name: 'Original',
+    summary:
+      'Draw a Bankrupt card and your whole bank is gone unless you play Vault Lock. The game ends the moment the sixth Bankrupt is drawn.',
+  },
+  {
+    id: 'attack',
+    name: 'Bankrupt Attack',
+    summary:
+      "Bankrupt cards go into your hand. Play one to wipe out another player's bank — unless they block it with Vault Lock. After the sixth Bankrupt is drawn, everyone gets one last turn.",
+  },
+  {
+    id: 'piggy',
+    name: 'Piggy Bank',
+    summary:
+      'A gentler twist on the Original: when you go bankrupt you keep your smallest pile, and everyone gets one last turn after the sixth Bankrupt. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.',
+  },
+];
+
 function Page({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
   return (
     <main className="page">
@@ -169,28 +190,19 @@ export function Setup({
       <fieldset className="field">
         <legend>Rules</legend>
         <div className="segmented">
-          <button
-            type="button"
-            className={`btn${ruleSet === 'original' ? ' btn--primary' : ''}`}
-            aria-pressed={ruleSet === 'original'}
-            onClick={() => setRuleSet('original')}
-          >
-            Original
-          </button>
-          <button
-            type="button"
-            className={`btn${ruleSet === 'piggy' ? ' btn--primary' : ''}`}
-            aria-pressed={ruleSet === 'piggy'}
-            onClick={() => setRuleSet('piggy')}
-          >
-            Piggy Bank
-          </button>
+          {RULE_CHOICES.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              className={`btn${ruleSet === choice.id ? ' btn--primary' : ''}`}
+              aria-pressed={ruleSet === choice.id}
+              onClick={() => setRuleSet(choice.id)}
+            >
+              {choice.name}
+            </button>
+          ))}
         </div>
-        <p className="note">
-          {ruleSet === 'original'
-            ? 'Draw a Bankrupt card and your whole bank is gone unless you play Vault Lock. The game ends the moment the sixth Bankrupt is drawn.'
-            : 'A gentler twist: when you go bankrupt you keep your smallest pile, and everyone gets one last turn after the sixth Bankrupt. With 2 players, the deck has 4 Vault Locks and 4 Sheriffs.'}
-        </p>
+        <p className="note">{RULE_CHOICES.find((choice) => choice.id === ruleSet)!.summary}</p>
       </fieldset>
 
       {seats.filter((s) => !s.isAI).length > 1 && (
@@ -257,9 +269,17 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           ties too, the win is shared.
         </p>
 
+        <h2>Bankrupt Attack mode</h2>
+        <p>
+          Pick this on the Game Setup screen to turn Bankrupt into a weapon. When you draw a Bankrupt card it goes
+          into your hand, and on your turn you can play it on another player to wipe out their whole bank. They can
+          block it with a Vault Lock. The counter still goes up each time a Bankrupt is drawn; after the sixth,
+          everyone gets one last turn, so nobody is left holding a Bankrupt they never got to use.
+        </p>
+
         <h2>Piggy Bank rules — a gentler twist</h2>
         <p>
-          On the Game Setup screen you can switch to Piggy Bank rules. When you go bankrupt you keep your smallest
+          Also on the Game Setup screen. Bankrupt is a trap again, but when you go bankrupt you keep your smallest
           pile (the one worth the least — but a one-pile bank is still all gone). After the sixth Bankrupt, everyone
           gets one last turn. In a 2-player game, 2 Vault Locks and 2 Sheriffs are left in the box.
         </p>

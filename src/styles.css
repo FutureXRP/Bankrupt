@@ -67,8 +67,8 @@ button, input, select { font: inherit; color: inherit; }
 .page__head h1 { font-size: 1.7rem; }
 .field { border: 0; padding: 0; margin: 0; display: grid; gap: .5rem; }
 .field legend, label > span { font-weight: 800; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; padding: 0; }
-.segmented { display: flex; gap: .5rem; }
-.segmented .btn { flex: 1; }
+.segmented { display: flex; flex-wrap: wrap; gap: .5rem; }
+.segmented .btn { flex: 1 1 auto; }
 input[type='text'], select {
   width: 100%; min-height: 2.75rem; padding: .4rem .7rem;
   background: var(--bg-2); border: 2px solid var(--panel-line); border-radius: .6rem;

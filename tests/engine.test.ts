@@ -472,6 +472,23 @@ describe('Piggy Bank rule set', () => {
     expect(createGame({ players: seats(3), seed: 3, rules: RULE_SETS.piggy }).removed).toHaveLength(0);
   });
 
+  it('Bankrupt Attack mode puts Bankrupt in the hand to be played on others', () => {
+    expect(RULE_SETS.attack).toMatchObject({ bankruptMode: 'attack', endTrigger: 'final_circuit', bankruptDestroys: 'all' });
+    let s = blankGame(3, RULE_SETS.attack);
+    give(s, 0, 'bank', '$100');
+    give(s, 1, 'bank', '$50', '$25');
+    give(s, 0, 'hand', '$5', '$5');
+    stackTop(s, 'bankrupt');
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    expect(total(s, 0)).toBe(110); // drawing it does not hurt you
+    expect(handIds(s, 0, 'bankrupt')).toHaveLength(1);
+    expect(s.bankruptDrawnCount).toBe(1);
+    s.currentPlayerIndex = 0; // skip round the table back to Ava
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
+    expect(total(s, 1)).toBe(0);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
   it("the original rule set is the creator's game", () => {
     expect(RULE_SETS.original).toMatchObject({
       bankruptMode: 'trap',

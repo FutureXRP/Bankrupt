@@ -4,7 +4,8 @@
 > Nobody holds or plays it. The player who **draws** a Bankrupt card loses their own bank, unless they play a
 > Vault Lock from their hand. The game ends the moment the sixth Bankrupt is drawn — there is no Final Round.
 > Wherever the sections below describe Bankrupt as a card played on an opponent, or a final circuit of turns,
-> this correction wins. The game in this repository follows the correction; see the README.
+> this correction wins. The game in this repository follows the correction; see the README. The
+> play-it-on-an-opponent version described below is still offered as an optional "Bankrupt Attack" mode.
 
 ## Complete Game Rulebook & Digital Product Specification
 

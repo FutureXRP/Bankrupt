@@ -37,7 +37,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - One action per turn: bank a matching set, play Bank Thief, or discard when stuck. Then refill to six cards.
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
-- A choice of Original or Piggy Bank rules on the setup screen (see below).
+- A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
 - Local pass-and-play for 2–4 people on one device, with a privacy screen between turns.
@@ -47,9 +47,9 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 Not built yet: online rooms, a step-by-step interactive tutorial (there is a rules page and a practice
 match instead), final illustrations and card-flight animations, and browser end-to-end tests in the repo.
 
-## Two rule sets
+## Three rule sets
 
-Both live in [`src/engine/rules.ts`](./src/engine/rules.ts).
+All three live in [`src/engine/rules.ts`](./src/engine/rules.ts).
 
 **Original** (the default) is the creator's game:
 
@@ -57,7 +57,13 @@ Both live in [`src/engine/rules.ts`](./src/engine/rules.ts).
   Vault Lock from their hand. An empty bank loses nothing.
 - The game ends the moment the sixth Bankrupt is drawn.
 
-**Piggy Bank** is the same game with a softer landing, chosen after simulating 3,000 computer-vs-computer
+**Bankrupt Attack** turns Bankrupt into a weapon:
+
+- A drawn Bankrupt goes into your hand. On your turn you can play it on another player to wipe out their
+  whole bank; they can block it with a Vault Lock.
+- After the sixth Bankrupt is drawn, everyone gets one last turn, so the last ones can still be played.
+
+**Piggy Bank** is the Original with a softer landing, chosen after simulating 3,000 computer-vs-computer
 games per setup:
 
 | Change | What the simulation showed (Original → Piggy Bank) |
@@ -81,8 +87,8 @@ rules file:
 | Choosing not to play a Vault Lock or Sheriff | Allowed | `allowDeclineDefense` |
 | Ties | Most banked cards wins, then shared | fixed in the engine |
 
-Variants that were tried and shelved also remain as switches: `bankruptMode: 'attack'` (the first document's
-reading, where Bankrupt is played on an opponent), `turnStyle: 'bank_then_attack'` and `stuckDiscardLimit`.
+Two variants that were tried and shelved also remain as switches: `turnStyle: 'bank_then_attack'` and
+`stuckDiscardLimit`.
 
 The creator credit shown on the menu and Credits screen is a placeholder in
 [`src/ui/branding.ts`](./src/ui/branding.ts) until she chooses how she wants to be named.
@@ -93,7 +99,7 @@ The creator credit shown on the menu and Credits screen is a placeholder in
 src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgame, invariants
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
 src/ui/       React screens, card faces, sounds, saved settings
-tests/        Rules tests for both rule sets and the variants, plus 3,000 simulated games
+tests/        Rules tests for all three rule sets and the variants, plus 3,000 simulated games
 ```
 
 The engine is independent of the interface, so the same rules can later drive an online server or a mobile app.

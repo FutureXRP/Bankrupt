@@ -7,8 +7,8 @@ export type RuleConfig = {
    * How Bankrupt works.
    * trap (the creator's rule): Bankrupt is never held or played. The player who
    *   DRAWS it loses their own bank unless they play Vault Lock.
-   * attack (the first spec's mistaken reading, kept as a variant): Bankrupt goes
-   *   to the hand and is played on an opponent.
+   * attack (offered as the "Bankrupt Attack" mode): Bankrupt goes to the hand
+   *   and is played on an opponent, who can block with Vault Lock.
    */
   bankruptMode: 'trap' | 'attack';
   /** §25 #2 — smallest set of matching money that can be banked. 1 allows single cards. */
@@ -64,13 +64,16 @@ export const DEFAULT_RULES: RuleConfig = {
 };
 
 /**
- * The two rule sets offered on the setup screen.
+ * The three rule sets offered on the setup screen.
  * original: the creator's game. Whoever draws Bankrupt loses their own bank
  *   unless they play Vault Lock, and the game ends the moment the sixth is drawn.
  * piggy: the same game with a softer landing, chosen from simulated play —
  *   1. a bankrupted player keeps their smallest pile (far fewer $0 finishes);
  *   2. after the sixth Bankrupt everyone gets one last turn;
  *   3. a 2-player game uses 4 Vault Locks and 4 Sheriffs (fewer dead turns).
+ * attack: Bankrupt goes into your hand when you draw it and you play it on
+ *   another player, who can block with Vault Lock. After the sixth Bankrupt is
+ *   drawn everyone gets one last turn, so the last ones can still be played.
  */
 export const RULE_SETS = {
   original: DEFAULT_RULES,
@@ -80,6 +83,7 @@ export const RULE_SETS = {
     endTrigger: 'final_circuit',
     twoPlayerDefenseCopies: 4,
   },
+  attack: { ...DEFAULT_RULES, bankruptMode: 'attack', endTrigger: 'final_circuit' },
 } as const satisfies Record<string, RuleConfig>;
 
 export type RuleSetId = keyof typeof RULE_SETS;
