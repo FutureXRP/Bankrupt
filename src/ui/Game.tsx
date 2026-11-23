@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { chooseForPhase } from '../ai';
 import {
   BANKRUPT_TOTAL,
+  SHOP_ITEMS,
+  bankTotal,
+  canTarget,
+  shopProblem,
   CARD_NAMES,
   DEFENSE_FOR,
   actorId,
@@ -18,6 +22,7 @@ import {
   sumMoney,
   validateAction,
   type Action,
+  type AttackKind,
   type Card,
   type GameState,
   type LogEntry,
@@ -32,7 +37,7 @@ import type { Settings } from './storage';
 const AI_DELAY = { fast: 450, normal: 1100, slow: 2000 } as const;
 const GROUP_ORDER: MoneyValue[] = [100, 50, 25, 5];
 const BANNER_KINDS: LogKind[] = ['final', 'bankrupt', 'block', 'thief', 'attack'];
-const SOUND_ORDER: LogKind[] = ['end', 'final', 'bankrupt', 'block', 'thief', 'attack', 'bank', 'discard'];
+const SOUND_ORDER: LogKind[] = ['end', 'final', 'bankrupt', 'block', 'thief', 'attack', 'shop', 'bank', 'discard'];
 
 type Props = {
   initialState: GameState;
@@ -49,9 +54,19 @@ type Props = {
   online?: { state: GameState; seatId: string; runAI: boolean; onAction: (action: Action) => void };
 };
 
-function BankView({ bank, onPick, ownerName }: { bank: Card[]; onPick?: (cardId: string) => void; ownerName: string }) {
+function BankView({
+  bank,
+  bonus,
+  onPick,
+  ownerName,
+}: {
+  bank: Card[];
+  bonus: number;
+  onPick?: (cardId: string) => void;
+  ownerName: string;
+}) {
   const groups = GROUP_ORDER.map((value) => bank.filter((c) => c.value === value)).filter((g) => g.length > 0);
-  if (groups.length === 0) return <p className="bank bank--empty">Bank is empty</p>;
+  if (groups.length === 0 && bonus === 0) return <p className="bank bank--empty">Bank is empty</p>;
   return (
     <ul className="bank" aria-label={`${ownerName}'s bank`}>
       {groups.map((cards) => (
@@ -71,6 +86,11 @@ function BankView({ bank, onPick, ownerName }: { bank: Card[]; onPick?: (cardId:
           </span>
         </li>
       ))}
+      {bonus > 0 && (
+        <li className="bank__cash" aria-label={`$${bonus} in cash`}>
+          +${bonus} cash
+        </li>
+      )}
     </ul>
   );
 }
@@ -80,6 +100,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const state = online ? online.state : localState;
   const [selected, setSelected] = useState<string[]>([]);
   const [fx, setFx] = useState<LogEntry | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
   const seenLog = useRef(initialState.actionLog.length);
 
   // Players using THIS device. Online, that is exactly one seat.
@@ -118,7 +139,10 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
     if (!solo) setRevealedFor((current) => (current === actor ? current : null));
   }, [actor, solo]);
 
-  useEffect(() => setSelected([]), [state.turnNumber, state.phase]);
+  useEffect(() => {
+    setSelected([]);
+    setShopOpen(false);
+  }, [state.turnNumber, state.phase]);
 
   // Announce new events: banner, highlight and sound.
   useEffect(() => {
@@ -158,10 +182,10 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const canBank = myTurn && picked.length > 0 && validateAction(state, bankAction) === null;
   const single = picked.length === 1 ? picked[0] : undefined;
   const attackCard = myTurn && single && isAttackKind(single.kind) ? single : undefined;
-  const targets = attackCard ? rivals.filter((p) => p.bank.length > 0) : [];
+  const targets = attackCard ? rivals.filter((p) => canTarget(attackCard.kind as AttackKind, p, state.buffs.heist)) : [];
   const canDiscard =
     myTurn && !!single && validateAction(state, { type: 'discard', playerId: seat.id, cardIds: [single.id] }) === null;
-  const stuck = myTurn && !hasLegalPrimaryAction(seat.hand, rivals, state.rules);
+  const stuck = myTurn && !hasLegalPrimaryAction(seat.hand, rivals, state.rules, state.buffs.heist);
 
   const toggle = (card: Card) => {
     if (!myTurn) return;
@@ -284,12 +308,31 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
 
       <section className={`me${actor === seat.id && !finished ? ' is-active' : ''}${hitClass(fx, seat.id)}`} aria-label={`${seat.name}'s area`}>
         <div className="me__head">
-          <h2 className="me__name">{seat.name}</h2>
-          <span className="total" aria-label={`Bank total $${sumMoney(seat.bank)}`}>
-            ${sumMoney(seat.bank)}
+          <h2 className="me__name">
+            {seat.name}
+            {seat.insured && <span className="tag tag--good">insured</span>}
+          </h2>
+          <span className="total" aria-label={`Bank total $${bankTotal(seat)}`}>
+            ${bankTotal(seat)}
           </span>
-          <BankView bank={seat.bank} ownerName={seat.name} />
+          <BankView bank={seat.bank} bonus={seat.bonus} ownerName={seat.name} />
         </div>
+
+        {handVisible && (state.buffs.doubleUp || state.buffs.heist || state.buffs.extraTurn) && actor === seat.id && (
+          <p className="buffs" role="status">
+            {state.buffs.doubleUp && <span className="tag tag--gold">Double Up ready — bank a match!</span>}
+            {state.buffs.heist && <span className="tag tag--gold">Big Heist ready — play your Bank Thief!</span>}
+            {state.buffs.extraTurn && <span className="tag tag--gold">Overtime — you go again after this</span>}
+          </p>
+        )}
+        {handVisible && seat.peek.length > 0 && (
+          <div className="peek" aria-label="Top of the deck">
+            <span className="peek__label">Inside Tip — next cards off the deck:</span>
+            {seat.peek.map((card, i) => (
+              <CardView key={card.id} card={card} size="sm" label={`Card ${i + 1} from the top: ${cardName(card)}`} />
+            ))}
+          </div>
+        )}
 
         <div className="hand" role="group" aria-label={handVisible ? 'Your hand' : `${seat.name}'s hand, hidden`}>
           {seat.hand.map((card) =>
@@ -308,6 +351,11 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
         </div>
 
         <div className="controls">
+          {myTurn && state.rules.shop && !state.buffs.bought && state.bankedThisTurn === 0 && (
+            <button type="button" className="btn btn--shop" onClick={() => setShopOpen(true)}>
+              🛒 Shop
+            </button>
+          )}
           {canBank && (
             <button type="button" className="btn btn--primary" onClick={() => dispatch(bankAction)}>
               Bank ${sumMoney(picked)}
@@ -321,7 +369,14 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
                 className="btn btn--danger"
                 onClick={() => dispatch({ type: 'attack', playerId: seat.id, cardId: attackCard.id, targetId: t.id })}
               >
-                {attackCard.kind === 'bankrupt' ? 'Bankrupt' : 'Rob'} {t.name} (${sumMoney(t.bank)})
+                {attackCard.kind === 'bankrupt'
+                  ? 'Bankrupt'
+                  : attackCard.kind === 'bank_swap'
+                    ? 'Swap banks with'
+                    : state.buffs.heist
+                      ? 'Big Heist on'
+                      : 'Rob'}{' '}
+                {t.name} (${bankTotal(t)})
               </button>
             ))}
           {attackCard && targets.length === 0 && !canDiscard && (
@@ -345,6 +400,46 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
           {hint && <p className="hint">{hint}</p>}
         </div>
       </section>
+
+      {shopOpen && myTurn && (
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+          <div className="dialog dialog--shop">
+            <h2 id="shop-title">Shop</h2>
+            <p className="note">
+              You have <strong>${bankTotal(seat)}</strong> in your bank. One power-up per turn, bought before you play.
+            </p>
+            <ul className="shop">
+              {SHOP_ITEMS.map((item) => {
+                const problem = shopProblem(state, seat.id, item.id);
+                return (
+                  <li key={item.id} className="shop__item">
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{item.blurb}</span>
+                      {problem && <em>{problem}</em>}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      disabled={!!problem}
+                      aria-label={`Buy ${item.name} for $${item.price}`}
+                      onClick={() => {
+                        dispatch({ type: 'buy', playerId: seat.id, item: item.id });
+                        setShopOpen(false);
+                      }}
+                    >
+                      ${item.price}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <button type="button" className="btn" onClick={() => setShopOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {defending && (
         <DefensePrompt
@@ -408,13 +503,14 @@ function PlayerPanel({
   fx: LogEntry | null;
   onPick?: (cardId: string) => void;
 }) {
-  const total = sumMoney(player.bank);
+  const total = bankTotal(player);
   return (
     <article className={`panel${active ? ' is-active' : ''}${onPick ? ' is-target' : ''}${hitClass(fx, player.id)}`}>
       <div className="panel__head">
         <h2 className="panel__name">
           {player.name}
           {player.isAI && <span className="tag">{player.difficulty} AI</span>}
+          {player.insured && <span className="tag tag--good">insured</span>}
         </h2>
         <span className="total" aria-label={`Bank total $${total}`}>
           ${total}
@@ -428,7 +524,7 @@ function PlayerPanel({
           {player.hand.length} in hand
         </span>
       </div>
-      <BankView bank={player.bank} ownerName={player.name} onPick={onPick} />
+      <BankView bank={player.bank} bonus={player.bonus} ownerName={player.name} onPick={onPick} />
     </article>
   );
 }
@@ -446,6 +542,8 @@ function DefensePrompt({
   const kind = pending?.kind ?? 'bankrupt';
   const defense = defender.hand.find((c) => c.kind === DEFENSE_FOR[kind])!;
   const saved = sumMoney(pileSavedFromBankrupt(defender.bank, state.rules));
+  const mine = bankTotal(defender);
+  const attackerBank = pending ? bankTotal(state.players.find((p) => p.id === pending.attackerId)!) : 0;
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="defense-title">
       <div className={`dialog dialog--${kind}`}>
@@ -455,9 +553,14 @@ function DefensePrompt({
         <p>
           {kind === 'bankrupt'
             ? saved > 0
-              ? `You will lose $${sumMoney(defender.bank) - saved} and keep only your smallest pile ($${saved}) unless you block it.`
-              : `Your whole bank ($${sumMoney(defender.bank)}) will be wiped out unless you block it.`
-            : 'They will steal a card from your bank unless you block it.'}
+              ? `You will lose $${mine - saved} and keep only your smallest pile ($${saved}) unless you block it.`
+              : `Your whole bank ($${mine}) will be wiped out unless you block it.`
+            : kind === 'bank_swap'
+              ? `They will trade their $${attackerBank} bank for your $${mine} unless you block it.`
+              : state.buffs.heist
+                ? `It's a BIG HEIST: they will steal your whole bank ($${mine}) unless you block it.`
+                : 'They will steal a card from your bank unless you block it.'}
+          {defender.insured && kind === 'bankrupt' && ' Your Insurance would pay half back.'}
         </p>
         <div className="dialog__card">
           <CardView card={defense} />

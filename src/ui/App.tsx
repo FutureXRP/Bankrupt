@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { RULE_SETS, createGame, randomSeed, type GameState, type RuleSetId, type SeatConfig } from '../engine';
+import {
+  DEFAULT_EXTRAS,
+  createGame,
+  randomSeed,
+  rulesFor,
+  type Extras,
+  type GameState,
+  type RuleSetId,
+  type SeatConfig,
+} from '../engine';
 import { Game } from './Game';
 import { Friends, codeFromAddress } from './Online';
 import { Credits, HowToPlay, Menu, SettingsScreen, Setup } from './Screens';
@@ -28,6 +37,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(inviteCode ? 'friends' : 'menu');
   const [seats, setSeats] = useState<SeatConfig[]>(DEFAULT_SEATS);
   const [ruleSet, setRuleSet] = useState<RuleSetId>('original');
+  const [extras, setExtras] = useState<Extras>(DEFAULT_EXTRAS);
   const [game, setGame] = useState<{ key: number; state: GameState } | null>(null);
   const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame);
 
@@ -37,10 +47,11 @@ export function App() {
     saveSettings(settings);
   }, [settings]);
 
-  const start = (nextSeats: SeatConfig[], nextRules: RuleSetId = ruleSet) => {
+  const start = (nextSeats: SeatConfig[], nextRules: RuleSetId = ruleSet, nextExtras: Extras = extras) => {
     setSeats(nextSeats);
     setRuleSet(nextRules);
-    const state = createGame({ players: nextSeats, seed: randomSeed(), rules: RULE_SETS[nextRules] });
+    setExtras(nextExtras);
+    const state = createGame({ players: nextSeats, seed: randomSeed(), rules: rulesFor(nextRules, nextExtras) });
     setGame({ key: Date.now(), state });
     setScreen('game');
   };
@@ -49,6 +60,7 @@ export function App() {
     if (!saved) return;
     setSeats(saved.seats);
     setRuleSet(saved.ruleSet);
+    setExtras(saved.extras);
     setGame({ key: Date.now(), state: saved.state });
     setScreen('game');
   };
@@ -63,9 +75,9 @@ export function App() {
     (state: GameState) => {
       if (seats.filter((s) => !s.isAI).length !== 1) return;
       if (state.phase === 'finished') clearSavedGame();
-      else saveGame({ seats, ruleSet, state });
+      else saveGame({ seats, ruleSet, extras, state });
     },
-    [seats, ruleSet],
+    [seats, ruleSet, extras],
   );
 
   switch (screen) {
@@ -82,7 +94,7 @@ export function App() {
         />
       ) : null;
     case 'setup':
-      return <Setup initialSeats={seats} initialRuleSet={ruleSet} onStart={start} onBack={toMenu} />;
+      return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} onStart={start} onBack={toMenu} />;
     case 'howto':
       return (
         <HowToPlay

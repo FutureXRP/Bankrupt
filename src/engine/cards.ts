@@ -1,8 +1,8 @@
 // Card definitions, counts and unique IDs (spec §2, §18.1).
 
 export type MoneyValue = 5 | 25 | 50 | 100;
-export type CardKind = 'money' | 'bankrupt' | 'vault_lock' | 'bank_thief' | 'sheriff';
-export type AttackKind = 'bankrupt' | 'bank_thief';
+export type CardKind = 'money' | 'bankrupt' | 'vault_lock' | 'bank_thief' | 'sheriff' | 'bank_swap';
+export type AttackKind = 'bankrupt' | 'bank_thief' | 'bank_swap';
 export type DefenseKind = 'vault_lock' | 'sheriff';
 
 export type Card = {
@@ -23,6 +23,7 @@ export const TOTAL_MONEY_VALUE = 2520;
 export const DEFENSE_FOR: Record<AttackKind, DefenseKind> = {
   bankrupt: 'vault_lock',
   bank_thief: 'sheriff',
+  bank_swap: 'sheriff',
 };
 
 export const CARD_NAMES: Record<Exclude<CardKind, 'money'>, string> = {
@@ -30,23 +31,28 @@ export const CARD_NAMES: Record<Exclude<CardKind, 'money'>, string> = {
   vault_lock: 'Vault Lock',
   bank_thief: 'Bank Thief',
   sheriff: 'Sheriff',
+  bank_swap: 'Bank Swap',
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** How many copies of each card a deck holds. Bankrupt is always six. */
-export type DeckSize = { moneyCopies: number; specialCopies: number };
+export type DeckSize = { moneyCopies: number; specialCopies: number; swapCopies: number };
 
-export const BASE_DECK: DeckSize = { moneyCopies: MONEY_COPIES, specialCopies: SPECIAL_COPIES };
+export const BASE_DECK: DeckSize = { moneyCopies: MONEY_COPIES, specialCopies: SPECIAL_COPIES, swapCopies: 0 };
 
 /** Bigger tables use a bigger deck so the game lasts about as long for everyone. */
-export function deckSizeFor(playerCount: number, scale: 'fixed' | 'by_players'): DeckSize {
+export function deckSizeFor(playerCount: number, scale: 'fixed' | 'by_players', bankSwapCards = 0): DeckSize {
   const factor = scale === 'by_players' ? (playerCount >= 4 ? 2 : playerCount === 3 ? 1.5 : 1) : 1;
-  return { moneyCopies: MONEY_COPIES * factor, specialCopies: SPECIAL_COPIES * factor };
+  return {
+    moneyCopies: MONEY_COPIES * factor,
+    specialCopies: SPECIAL_COPIES * factor,
+    swapCopies: Math.round(bankSwapCards * factor),
+  };
 }
 
 export const deckCardCount = (size: DeckSize) =>
-  MONEY_VALUES.length * size.moneyCopies + 3 * size.specialCopies + BANKRUPT_TOTAL;
+  MONEY_VALUES.length * size.moneyCopies + 3 * size.specialCopies + size.swapCopies + BANKRUPT_TOTAL;
 
 export const deckMoneyValue = (size: DeckSize) =>
   MONEY_VALUES.reduce((sum, v) => sum + v, 0) * size.moneyCopies;
@@ -65,6 +71,7 @@ export function buildDeck(size: DeckSize = BASE_DECK): Card[] {
       deck.push({ id: `${kind}-${pad(i)}`, kind });
     }
   }
+  for (let i = 1; i <= size.swapCopies; i++) deck.push({ id: `bank_swap-${pad(i)}`, kind: 'bank_swap' });
   return deck;
 }
 
@@ -79,5 +86,5 @@ export function sumMoney(cards: readonly Card[]): number {
 }
 
 export function isAttackKind(kind: CardKind): kind is AttackKind {
-  return kind === 'bankrupt' || kind === 'bank_thief';
+  return kind === 'bankrupt' || kind === 'bank_thief' || kind === 'bank_swap';
 }

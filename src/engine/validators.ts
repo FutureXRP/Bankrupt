@@ -1,7 +1,8 @@
 // Rule checks shared by the engine, the AI and the interface.
 
-import { DEFENSE_FOR, MONEY_VALUES, isAttackKind, type Card, type MoneyValue } from './cards';
+import { DEFENSE_FOR, MONEY_VALUES, isAttackKind, type AttackKind, type Card, type MoneyValue } from './cards';
 import type { RuleConfig } from './rules';
+import { bankTotal, shopItem, type ShopItemId } from './shop';
 import type { Action, GameState } from './state';
 
 /** Denominations the hand holds enough copies of to bank. */
@@ -23,14 +24,53 @@ export function pileSavedFromBankrupt(bank: readonly Card[], rules: RuleConfig):
   return piles.reduce((a, b) => (b.length * b[0].value! < a.length * a[0].value! ? b : a));
 }
 
+type Bank = { bank: readonly Card[]; bonus: number };
+
+/**
+ * Can this attack be aimed at this bank? An ordinary Bank Thief needs a money
+ * card to take; Bankrupt, Bank Swap and a Big Heist need any money at all.
+ */
+export function canTarget(kind: AttackKind, target: Bank, heist: boolean): boolean {
+  return kind === 'bank_thief' && !heist ? target.bank.length > 0 : bankTotal(target) > 0;
+}
+
 /** True when the player could bank or attack, which (by default) rules out discarding. */
 export function hasLegalPrimaryAction(
   hand: readonly Card[],
-  opponents: readonly { bank: readonly Card[] }[],
+  opponents: readonly Bank[],
   rules: RuleConfig,
+  heist = false,
 ): boolean {
   if (bankableValues(hand, rules).length > 0) return true;
-  return hand.some((c) => isAttackKind(c.kind)) && opponents.some((o) => o.bank.length > 0);
+  // Bank Swap never forces your hand: you may always hold on to it.
+  return hand.some(
+    (c) => isAttackKind(c.kind) && c.kind !== 'bank_swap' && opponents.some((o) => canTarget(c.kind as AttackKind, o, heist)),
+  );
+}
+
+/** Why a power-up cannot be bought right now, or null if it can. */
+export function shopProblem(state: GameState, playerId: string, itemId: ShopItemId): string | null {
+  const player = state.players.find((p) => p.id === playerId)!;
+  const item = shopItem(itemId);
+  if (!state.rules.shop) return 'The shop is closed in this game.';
+  if (state.phase !== 'action' || state.players[state.currentPlayerIndex].id !== playerId) return 'You can only shop on your turn.';
+  if (state.buffs.bought) return 'One power-up per turn.';
+  if (state.bankedThisTurn > 0) return 'Shop before you play.';
+  if (bankTotal(player) < item.price) return `You need $${item.price} in your bank.`;
+  const rivals = state.players.filter((p) => p.id !== playerId);
+  switch (item.id) {
+    case 'double_up':
+      return bankableValues(player.hand, state.rules).length > 0 ? null : 'You have no match to bank.';
+    case 'big_heist':
+      if (!player.hand.some((c) => c.kind === 'bank_thief')) return 'You need a Bank Thief card.';
+      return rivals.some((r) => bankTotal(r) > 0) ? null : 'Nobody has money to steal.';
+    case 'insurance':
+      return player.insured ? 'You are already insured.' : null;
+    case 'inside_tip':
+      return state.drawPile.length > 0 ? null : 'The deck is empty.';
+    case 'overtime':
+      return null;
+  }
 }
 
 /** Returns null when the action is legal, otherwise a plain-language reason. */
@@ -93,7 +133,7 @@ export function validateAction(state: GameState, action: Action): string | null 
       if (action.targetId === player.id) return 'You cannot attack yourself.';
       const target = state.players.find((p) => p.id === action.targetId);
       if (!target) return 'Unknown target.';
-      if (target.bank.length === 0) return "You cannot attack an empty bank.";
+      if (!canTarget(card.kind, target, state.buffs.heist)) return 'There is nothing there to take.';
       return null;
     }
     case 'discard': {
@@ -108,12 +148,14 @@ export function validateAction(state: GameState, action: Action): string | null 
       if (state.bankedThisTurn > 0) return 'You already banked this turn — attack or end your turn.';
       if (state.rules.discardOnlyWhenStuck) {
         const opponents = state.players.filter((p) => p.id !== player.id);
-        if (hasLegalPrimaryAction(player.hand, opponents, state.rules)) {
+        if (hasLegalPrimaryAction(player.hand, opponents, state.rules, state.buffs.heist)) {
           return 'You can only discard when you have no other move.';
         }
       }
       return null;
     }
+    case 'buy':
+      return shopProblem(state, player.id, action.item);
     case 'pass':
       if (state.bankedThisTurn > 0) return 'End your turn instead.';
       return player.hand.length === 0 ? null : 'You can only pass with an empty hand.';

@@ -4,6 +4,7 @@
 import { buildDeck, deckSizeFor } from './cards';
 import { nextRandom, shuffled } from './rng';
 import { DEFAULT_RULES, type RuleConfig } from './rules';
+import { noBuffs } from './shop';
 import type { Difficulty, GameState, Player } from './state';
 
 export type SeatConfig = { name: string; isAI: boolean; difficulty?: Difficulty };
@@ -20,7 +21,7 @@ export function createGame(options: GameOptions): GameState {
   if (count < 2 || count > 4) throw new Error('BANKRUPT is for 2 to 4 players.');
   const rules: RuleConfig = { ...DEFAULT_RULES, ...options.rules };
 
-  const deckSize = deckSizeFor(count, rules.deckScale);
+  const deckSize = deckSizeFor(count, rules.deckScale, rules.bankSwapCards);
   const deck = buildDeck(deckSize);
   const bankrupts = deck.filter((c) => c.kind === 'bankrupt');
   const removed: typeof deck = [];
@@ -44,6 +45,9 @@ export function createGame(options: GameOptions): GameState {
     difficulty: seat.isAI ? (seat.difficulty ?? 'casual') : undefined,
     hand: [],
     bank: [],
+    bonus: 0,
+    insured: false,
+    peek: [],
     stats: { bankruptPlayed: 0, bankruptBlocked: 0, thiefPlayed: 0, thiefBlocked: 0, largestBank: 0 },
   }));
 
@@ -76,6 +80,7 @@ export function createGame(options: GameOptions): GameState {
     bankruptDrawnCount: 0,
     bankedThisTurn: 0,
     refillQueue: [],
+    buffs: noBuffs(),
     rngState,
     actionLog: [
       {

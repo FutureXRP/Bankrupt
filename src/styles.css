@@ -128,6 +128,8 @@ button.card:hover { transform: translateY(-4%); }
 .card--vault_lock { --c: #9db8d6; --c2: #45658c; }
 .card--bank_thief { --c: #ffa53d; --c2: #cc5c00; }
 .card--sheriff { --c: #3fd6c6; --c2: #0c7d76; }
+.card--bank_swap { --c: #ff7ac3; --c2: #b3247a; }
+.card--bank_swap .card__title { font-size: 15cqw; }
 .card--back .card__face { background: repeating-linear-gradient(45deg, #26397a 0 8cqw, #1c2b5e 8cqw 16cqw); border-color: var(--gold); animation: none; }
 .card__backmark { font-size: 46cqw; font-weight: 900; color: var(--gold); }
 .card--sm .card__sub, .card--xs .card__backmark { display: none; }
@@ -230,3 +232,24 @@ button.card:hover { transform: translateY(-4%); }
 .invite__code { font-size: clamp(2.6rem, 14vw, 4rem); font-weight: 900; letter-spacing: .18em; color: var(--gold); line-height: 1; user-select: all; }
 .roster { display: grid; gap: .45rem; }
 .roster li { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; background: var(--bg-2); border: 2px solid var(--panel-line); border-radius: .7rem; }
+
+/* ---------- Shop & power-ups ---------- */
+.bank__cash { padding: .3rem .6rem; border-radius: 1rem; background: #1f6b48; border: 2px solid var(--good); font-weight: 900; font-size: .95rem; white-space: nowrap; }
+.tag--good { background: #1f6b48; color: #d9ffec; }
+.tag--gold { background: var(--gold); color: var(--gold-ink); font-size: .8rem; text-transform: none; letter-spacing: 0; padding: .25rem .7rem; }
+.buffs { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+.peek { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem; padding: .5rem; border: 2px dashed var(--gold); border-radius: .8rem; }
+.peek__label { font-weight: 800; font-size: .9rem; color: var(--gold); flex-basis: 100%; text-align: center; }
+.btn--shop { background: #2b7a5a; border-color: var(--good); }
+.dialog--shop { border-color: var(--good); justify-items: stretch; }
+.dialog--shop h2 { text-align: center; }
+.shop { display: grid; gap: .55rem; text-align: left; }
+.shop__item { display: flex; align-items: center; gap: .8rem; padding: .6rem .7rem; background: var(--bg-2); border: 2px solid var(--panel-line); border-radius: .8rem; }
+.shop__item > div { display: grid; gap: .15rem; flex: 1; min-width: 0; }
+.shop__item span { color: var(--muted); font-size: .9rem; }
+.shop__item em { color: var(--gold); font-size: .8rem; font-style: normal; font-weight: 700; }
+.shop__item .btn { min-width: 4.6rem; }
+.extras { display: grid; gap: .5rem; }
+.extras label { display: flex; align-items: flex-start; gap: .6rem; }
+.extras input { width: 1.35rem; height: 1.35rem; margin-top: .15rem; flex: none; accent-color: var(--gold); }
+.extras label > span { text-transform: none; letter-spacing: 0; font-size: 1rem; color: var(--text); font-weight: 400; }

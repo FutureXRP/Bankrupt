@@ -1,8 +1,9 @@
 // What one player is allowed to know. The AI only ever receives this view, so it
 // cannot see rival hands or the order of the draw deck (spec §14).
 
-import { sumMoney, type Card } from './cards';
+import type { Card } from './cards';
 import type { RuleConfig } from './rules';
+import { bankTotal, type TurnBuffs } from './shop';
 import type { GameState, PendingAttack, Phase } from './state';
 
 export type PublicPlayer = {
@@ -10,7 +11,9 @@ export type PublicPlayer = {
   name: string;
   isAI: boolean;
   bank: Card[];
-  total: number;
+  bonus: number;
+  insured: boolean;
+  total: number; // money cards plus loose cash
   handCount: number;
 };
 
@@ -25,6 +28,9 @@ export type PlayerView = {
   discardPile: Card[];
   bankruptDrawnCount: number;
   bankedThisTurn: number;
+  buffs: TurnBuffs;
+  /** Deck cards this player has seen with Inside Tip (first drawn first). */
+  peek: Card[];
   currentPlayerId: string;
   phase: Phase;
   pendingAttack?: PendingAttack;
@@ -59,13 +65,17 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
       name: p.name,
       isAI: p.isAI,
       bank: [...p.bank],
-      total: sumMoney(p.bank),
+      bonus: p.bonus,
+      insured: p.insured,
+      total: bankTotal(p),
       handCount: p.hand.length,
     })),
     drawCount: state.drawPile.length,
     discardPile: [...state.discardPile],
     bankruptDrawnCount: publicBankruptCount(state),
     bankedThisTurn: state.bankedThisTurn,
+    buffs: { ...state.buffs },
+    peek: [...self.peek],
     currentPlayerId: state.players[state.currentPlayerIndex].id,
     phase: state.phase,
     pendingAttack: state.pendingAttack ? { ...state.pendingAttack } : undefined,
@@ -85,7 +95,7 @@ export function maskStateFor(state: GameState, playerId: string): GameState {
   const blank = (): Card => ({ id: `hidden-${n++}`, kind: 'money' });
   return {
     ...state,
-    players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank) })),
+    players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank), peek: [] })),
     drawPile: state.drawPile.map(blank),
     removed: [],
     refillQueue: [],

@@ -2,6 +2,7 @@
 
 import type { AttackKind, Card, DeckSize } from './cards';
 import type { RuleConfig } from './rules';
+import type { ShopItemId, TurnBuffs } from './shop';
 
 export type Difficulty = 'casual' | 'competitive' | 'expert';
 
@@ -20,6 +21,9 @@ export type Player = {
   difficulty?: Difficulty;
   hand: Card[]; // private to owner
   bank: Card[]; // public
+  bonus: number; // public loose cash in the bank (doubled matches, payouts, change)
+  insured: boolean; // public: holds an Insurance policy
+  peek: Card[]; // private: deck cards seen with Inside Tip this turn
   stats: PlayerStats;
 };
 
@@ -35,6 +39,7 @@ export type LogKind =
   | 'discard'
   | 'pass'
   | 'draw'
+  | 'shop'
   | 'final'
   | 'end';
 
@@ -66,9 +71,11 @@ export type GameState = {
   turnNumber: number;
   phase: Phase;
   bankruptDrawnCount: number;
-  bankedThisTurn: number;
+  bankedThisTurn: number; // dollars the active player has banked so far this turn
   /** Players still owed a refill before the turn can pass, in order. */
-  refillQueue: string[]; // dollars the active player has banked so far this turn
+  refillQueue: string[];
+  /** Power-ups the active player has bought this turn. */
+  buffs: TurnBuffs;
   pendingAttack?: PendingAttack;
   /** Trap mode: this player drew Bankrupt, holds a Vault Lock, and must decide whether to use it. */
   pendingDraw?: { playerId: string };
@@ -83,6 +90,8 @@ export type Action =
   | { type: 'attack'; playerId: string; cardId: string; targetId: string }
   | { type: 'discard'; playerId: string; cardIds: string[] }
   | { type: 'pass'; playerId: string }
+  /** Shop rule: buy one power-up before acting. */
+  | { type: 'buy'; playerId: string; item: ShopItemId }
   /** bank_then_attack turns only: stop after banking without attacking. */
   | { type: 'end_turn'; playerId: string }
   /** The defender's answer to an attack. cardId null = do not block. */
@@ -97,12 +106,14 @@ export function cloneState(s: GameState): GameState {
       ...p,
       hand: [...p.hand],
       bank: [...p.bank],
+      peek: [...p.peek],
       stats: { ...p.stats },
     })),
     drawPile: [...s.drawPile],
     discardPile: [...s.discardPile],
     removed: [...s.removed],
     refillQueue: [...s.refillQueue],
+    buffs: { ...s.buffs },
     pendingAttack: s.pendingAttack ? { ...s.pendingAttack } : undefined,
     pendingDraw: s.pendingDraw ? { ...s.pendingDraw } : undefined,
     finalRound: s.finalRound ? { ...s.finalRound } : undefined,

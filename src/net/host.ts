@@ -4,14 +4,16 @@
 
 import Peer, { type DataConnection } from 'peerjs';
 import {
-  RULE_SETS,
+  DEFAULT_EXTRAS,
   applyAction,
   createGame,
   maskStateFor,
   randomSeed,
+  rulesFor,
   validateAction,
   type Action,
   type Difficulty,
+  type Extras,
   type GameState,
   type RuleSetId,
   type SeatConfig,
@@ -40,6 +42,7 @@ export class HostRoom {
   computers = 0;
   difficulty: Difficulty = 'casual';
   ruleSet: RuleSetId = 'original';
+  extras: Extras = DEFAULT_EXTRAS;
   game: { id: number; state: GameState } | null = null;
   version = 0;
 
@@ -204,6 +207,7 @@ export class HostRoom {
         ...AI_NAMES.slice(0, this.computers).map((name) => ({ name, kind: 'computer' as const })),
       ],
       ruleSet: this.ruleSet,
+      extras: this.extras,
       difficulty: this.difficulty,
     };
   }
@@ -212,10 +216,11 @@ export class HostRoom {
     return MAX_PLAYERS - 1 - this.guests.length;
   }
 
-  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId }) {
+  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId; extras?: Extras }) {
     if (patch.computers !== undefined) this.computers = Math.max(0, Math.min(patch.computers, this.maxComputers()));
     if (patch.difficulty) this.difficulty = patch.difficulty;
     if (patch.ruleSet) this.ruleSet = patch.ruleSet;
+    if (patch.extras) this.extras = patch.extras;
     this.sendLobby();
     this.changed();
   }
@@ -237,7 +242,7 @@ export class HostRoom {
       ...this.guests.map((g) => ({ name: g.name, isAI: false })),
       ...AI_NAMES.slice(0, this.computers).map((name) => ({ name, isAI: true, difficulty: this.difficulty })),
     ];
-    const state = createGame({ players: seats, seed: randomSeed(), rules: RULE_SETS[this.ruleSet] });
+    const state = createGame({ players: seats, seed: randomSeed(), rules: rulesFor(this.ruleSet, this.extras) });
     this.seatByConn.clear();
     this.emptySeats.clear();
     this.guests.forEach((g, i) => this.seatByConn.set(g.conn, state.players[i + 1].id));

@@ -7,3 +7,4 @@ export * from './validators';
 export * from './engine';
 export * from './view';
 export * from './invariants';
+export * from './shop';

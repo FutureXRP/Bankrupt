@@ -30,6 +30,10 @@ export function expectedLead(view: PlayerView, option: Option): number {
     const left = option.target.total - bankruptLoss(option.target, view);
     return chance * lead(me, { id: option.target.id, total: left }) + (1 - chance) * now;
   }
+  if (option.kind === 'bank_swap') {
+    const swapped = lead(option.target.total, { id: option.target.id, total: me });
+    return chance * swapped + (1 - chance) * now;
+  }
   const { gain } = bestSteal(option.target.bank, view);
   const after = lead(me + gain, { id: option.target.id, total: option.target.total - gain });
   return chance * after + (1 - chance) * now;

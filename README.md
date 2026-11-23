@@ -39,6 +39,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
 - A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
+- Two optional extras, both on by default: a power-up shop and Bank Swap cards (see below).
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
 - Play with Friends: one player hosts and gets an invite code; up to three others join from their own
@@ -108,6 +109,31 @@ games per setup:
 | A 2-player game leaves 2 Vault Locks and 2 Sheriffs in the box | Turns with nothing to play in 2-player games: about 19% → about 7% |
 
 Simulations measure balance, not fun. Whether Piggy Bank rules stay is the creator's call.
+
+## Extras
+
+Both are switches on the setup screen (and in the host's lobby for invite-code games), on by default, and
+work with any of the three rule sets.
+
+**Power-up shop.** At the start of your turn, before you play, you may spend money from your own bank on one
+power-up. All of it is pretend in-game money; nothing is ever bought with real money.
+
+| Power-up | Price | What it does |
+|---|---|---|
+| Double Up | $100 | The match you bank this turn is worth double |
+| Big Heist | $200 | Your Bank Thief this turn steals the whole bank, not one card; a Sheriff still stops it |
+| Insurance | $100 | The next time you go bankrupt, you get half of it back |
+| Inside Tip | $25 | Secretly peek at the top 3 cards of the deck |
+| Overtime | $100 | Take another turn right after this one |
+
+Paying takes exactly the price out of the bank: loose cash first, then the smallest money cards, with any
+overpayment returned as cash. Cash (from change, doubled matches and insurance payouts) counts toward winning
+and is lost to Bankrupt, but an ordinary Bank Thief can only take cards. Prices and effects live in
+[`src/engine/shop.ts`](./src/engine/shop.ts). The prices are first guesses and have not been balance-tested.
+
+**Bank Swap cards.** Two extra cards in the basic deck (three with 3 players, four with 4). Play one on
+another player to trade whole banks, cash included. A Sheriff stops it. Holding one never forces you to play
+it.
 
 ## Rules still to confirm with the creator
 

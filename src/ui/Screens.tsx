@@ -1,7 +1,7 @@
 // Menu, setup, how-to-play, settings and credits screens (spec §15.1, §15.2, §20).
 
 import { useState, type ReactNode } from 'react';
-import type { Card, Difficulty, RuleSetId, SeatConfig } from '../engine';
+import { BANK_SWAP_CARDS, SHOP_ITEMS, type Card, type Difficulty, type Extras, type RuleSetId, type SeatConfig } from '../engine';
 import { CREATOR_CREDIT, TAGLINE } from './branding';
 import { CardView } from './Card';
 import type { Settings } from './storage';
@@ -54,6 +54,35 @@ export function Logo() {
   );
 }
 
+export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (extras: Extras) => void }) {
+  return (
+    <fieldset className="field extras">
+      <legend>Extras</legend>
+      <label>
+        <input type="checkbox" checked={extras.shop} onChange={(e) => onChange({ ...extras, shop: e.target.checked })} />
+        <span>
+          <strong>Power-up shop</strong> — spend money from your bank on power-ups like Double Up and Big Heist.
+        </span>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={extras.bankSwap}
+          onChange={(e) => onChange({ ...extras, bankSwap: e.target.checked })}
+        />
+        <span>
+          <strong>Bank Swap cards</strong> — a card that trades your whole bank with another player's.
+        </span>
+      </label>
+    </fieldset>
+  );
+}
+
+export function extrasSummary(extras: Extras): string {
+  const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap cards'].filter(Boolean);
+  return on.length > 0 ? on.join(' and ') : 'none';
+}
+
 type MenuProps = {
   hasSave: boolean;
   onContinue: () => void;
@@ -101,16 +130,19 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onNaviga
 export function Setup({
   initialSeats,
   initialRuleSet,
+  initialExtras,
   onStart,
   onBack,
 }: {
   initialSeats: SeatConfig[];
   initialRuleSet: RuleSetId;
-  onStart: (seats: SeatConfig[], ruleSet: RuleSetId) => void;
+  initialExtras: Extras;
+  onStart: (seats: SeatConfig[], ruleSet: RuleSetId, extras: Extras) => void;
   onBack: () => void;
 }) {
   const [seats, setSeats] = useState<SeatConfig[]>(initialSeats);
   const [ruleSet, setRuleSet] = useState<RuleSetId>(initialRuleSet);
+  const [extras, setExtras] = useState<Extras>(initialExtras);
 
   const setCount = (count: number) =>
     setSeats((current) => {
@@ -206,12 +238,14 @@ export function Setup({
         <p className="note">{RULE_CHOICES.find((choice) => choice.id === ruleSet)!.summary}</p>
       </fieldset>
 
+      <ExtrasPicker extras={extras} onChange={setExtras} />
+
       {seats.filter((s) => !s.isAI).length > 1 && (
         <p className="note">Pass-and-play: the game hides each hand and asks you to pass the device between turns.</p>
       )}
       {duplicate && <p className="note note--warn">Give every player a different name.</p>}
 
-      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet)}>
+      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet, extras)}>
         Start Game
       </button>
     </Page>
@@ -226,7 +260,11 @@ const REFERENCE: { card: Card; text: string }[] = [
   { card: { id: 'ref-b', kind: 'bankrupt' }, text: 'Draw it and your own bank is wiped out, unless you play Vault Lock. 6 hidden in the deck.' },
   { card: { id: 'ref-v', kind: 'vault_lock' }, text: 'Keep it in your hand. When you draw Bankrupt, play it to save your bank. Used once. 6 in the basic deck.' },
   { card: { id: 'ref-t', kind: 'bank_thief' }, text: "Steal one money card from an opponent's bank. Blocked by Sheriff. 6 in the basic deck." },
-  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief comes for you to cancel it. Used once. 6 in the basic deck.' },
+  { card: { id: 'ref-s', kind: 'sheriff' }, text: 'Play it when a Bank Thief or Bank Swap comes for you to cancel it. Used once. 6 in the basic deck.' },
+  {
+    card: { id: 'ref-w', kind: 'bank_swap' },
+    text: `Extra card. Play it on another player to trade your whole bank for theirs. Blocked by Sheriff. ${BANK_SWAP_CARDS} in the basic deck when switched on.`,
+  },
 ];
 
 export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPractice: () => void }) {
@@ -268,6 +306,33 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           The counter shows how many Bankrupt cards have been drawn. When the <strong>sixth</strong> one is drawn, the
           game is over right away and the richest bank wins. If two banks tie, the one with more cards wins; if that
           ties too, the win is shared.
+        </p>
+
+        <h2>Extra: the power-up shop</h2>
+        <p>
+          When the shop is switched on, you can spend money from your own bank at the start of your turn, before you
+          play. One power-up per turn. The price comes straight out of your bank, so every purchase is a gamble.
+        </p>
+        <ul>
+          {SHOP_ITEMS.map((item) => (
+            <li key={item.id}>
+              <strong>
+                {item.name} — ${item.price}:
+              </strong>{' '}
+              {item.blurb}
+            </li>
+          ))}
+        </ul>
+        <p>
+          Doubled matches, insurance payouts and change from the shop sit in your bank as cash. Cash counts toward
+          winning and is lost if you go bankrupt, but an ordinary Bank Thief can only take cards.
+        </p>
+
+        <h2>Extra: Bank Swap cards</h2>
+        <p>
+          When switched on, a few Bank Swap cards are shuffled into the deck. Play one on another player to trade your
+          whole bank for theirs — perfect when you are behind. They can stop it with a Sheriff. You never have to play
+          it: holding one does not stop you discarding.
         </p>
 
         <h2>Bigger table, bigger deck</h2>

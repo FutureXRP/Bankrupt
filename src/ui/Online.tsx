@@ -6,7 +6,7 @@ import { GuestRoom } from '../net/guest';
 import { HostRoom } from '../net/host';
 import { CODE_LENGTH, cleanCode, type LobbyInfo } from '../net/protocol';
 import { Game } from './Game';
-import { RULE_CHOICES } from './Screens';
+import { ExtrasPicker, RULE_CHOICES, extrasSummary } from './Screens';
 import type { Settings } from './storage';
 
 const NAME_KEY = 'bankrupt.name';
@@ -277,6 +277,8 @@ function HostView({
         <p className="note">{RULE_CHOICES.find((c) => c.id === room.ruleSet)!.summary}</p>
       </fieldset>
 
+      <ExtrasPicker extras={room.extras} onChange={(extras) => room.configure({ extras })} />
+
       <button
         type="button"
         className="btn btn--primary btn--wide"
@@ -342,6 +344,9 @@ function GuestView({
           <p className="note">
             Rules: <strong>{RULE_CHOICES.find((c) => c.id === room.lobby!.ruleSet)!.name}</strong> —{' '}
             {RULE_CHOICES.find((c) => c.id === room.lobby!.ruleSet)!.summary}
+          </p>
+          <p className="note">
+            Extras: <strong>{extrasSummary(room.lobby.extras)}</strong>
           </p>
         </>
       )}

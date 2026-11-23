@@ -3,7 +3,7 @@
 // (peer-to-peer) and only ever receive what their own seat is allowed to see.
 
 import type { PeerOptions } from 'peerjs';
-import type { Action, Difficulty, GameState, RuleSetId } from '../engine';
+import type { Action, Difficulty, Extras, GameState, RuleSetId } from '../engine';
 
 export const MAX_PLAYERS = 4;
 
@@ -16,6 +16,7 @@ export type LobbyPlayer = { name: string; kind: 'host' | 'guest' | 'computer' };
 export type LobbyInfo = {
   players: LobbyPlayer[];
   ruleSet: RuleSetId;
+  extras: Extras;
   difficulty: Difficulty;
 };
 

@@ -22,6 +22,7 @@ export function checkInvariants(state: GameState): string[] {
   if (sumMoney(all) !== TOTAL_MONEY_VALUE) problems.push(`Money total is $${sumMoney(all)}.`);
 
   for (const p of state.players) {
+    if (p.bonus < 0 || !Number.isInteger(p.bonus)) problems.push(`${p.name} has $${p.bonus} in cash.`);
     if (p.bank.some((c) => c.kind !== 'money')) problems.push(`${p.name}'s bank holds a non-money card.`);
     if (p.hand.length > state.rules.handSize) problems.push(`${p.name} holds ${p.hand.length} cards.`);
   }

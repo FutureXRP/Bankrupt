@@ -4,6 +4,7 @@
 import {
   DEFENSE_FOR,
   bankableValues,
+  canTarget,
   pileSavedFromBankrupt,
   sumMoney,
   isAttackKind,
@@ -39,7 +40,9 @@ export function listOptions(view: PlayerView): Option[] {
     if (!isAttackKind(card.kind) || seenKinds.has(card.kind)) continue;
     seenKinds.add(card.kind);
     for (const target of opponents(view)) {
-      if (target.bank.length > 0) options.push({ type: 'attack', kind: card.kind, card, target });
+      // A swap is only worth listing when it trades up.
+      if (card.kind === 'bank_swap' && target.total <= self(view).total) continue;
+      if (canTarget(card.kind, target, view.buffs.heist)) options.push({ type: 'attack', kind: card.kind, card, target });
     }
   }
   if (view.bankedThisTurn > 0) {
@@ -83,6 +86,7 @@ export function leader(view: PlayerView): PublicPlayer | undefined {
 
 /** The best pick from a bank for a thief, and what it is worth under the current rules. */
 export function bestSteal(bank: readonly Card[], view: PlayerView): { cardId: string; gain: number } {
+  if (bank.length === 0) return { cardId: '', gain: 0 };
   let best = { cardId: bank[0].id, gain: 0 };
   for (const card of bank) {
     const value = card.value ?? 0;
@@ -127,6 +131,8 @@ export function keepScore(card: Card, view: PlayerView): number {
       return (card.value ?? 0) / 100 + (copies > 1 ? 1 : 0);
     case 'bankrupt':
       return 3.5;
+    case 'bank_swap':
+      return 4;
     case 'bank_thief':
       return 3;
     default: {

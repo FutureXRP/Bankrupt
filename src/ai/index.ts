@@ -7,11 +7,16 @@ import { bestSteal, pick, toAction, type Rand } from './common';
 import { competitiveChoice } from './competitive';
 import { expertChoice } from './expert';
 import { sequencedChoice } from './sequenced';
+import { followThrough, shopPurchase } from './shop';
 
 export type { Rand } from './common';
 
 /** The AI's move on its own turn. */
 export function chooseAction(view: PlayerView, difficulty: Difficulty, rand: Rand): Action {
+  const purchase = shopPurchase(view, difficulty, rand);
+  if (purchase) return { type: 'buy', playerId: view.selfId, item: purchase };
+  const committed = followThrough(view);
+  if (committed) return toAction(view, committed);
   const option =
     view.rules.turnStyle === 'bank_then_attack'
       ? sequencedChoice(view, difficulty, rand)

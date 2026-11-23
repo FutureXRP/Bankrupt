@@ -8,6 +8,7 @@ import {
   SPECIAL_KINDS,
   TOTAL_MONEY_VALUE,
   applyAction,
+  bankTotal,
   buildDeck,
   checkInvariants,
   createGame,
@@ -600,5 +601,186 @@ describe('tested-and-shelved variants still work', () => {
     give(one, 0, 'hand', '$5', '$25');
     const both = one.players[0].hand.map((c) => c.id);
     expect(validateAction(one, { type: 'discard', playerId: 'p1', cardIds: both })).toMatch(/exactly one/);
+  });
+});
+
+describe('power-up shop', () => {
+  const SHOP = { ...RULE_SETS.original, shop: true };
+  const buy = (s: ReturnType<typeof blankGame>, item: Parameters<typeof applyAction>[1] & { type: 'buy' }) => applyAction(s, item);
+
+  it('is closed unless the rule is on, and takes one purchase per turn before you play', () => {
+    const closed = blankGame(3);
+    give(closed, 0, 'bank', '$100', '$100');
+    expect(validateAction(closed, { type: 'buy', playerId: 'p1', item: 'overtime' })).toMatch(/closed/);
+
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$100', '$100', '$100');
+    expect(validateAction(s, { type: 'buy', playerId: 'p2', item: 'overtime' })).not.toBeNull(); // not their turn
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'insurance' });
+    expect(validateAction(s, { type: 'buy', playerId: 'p1', item: 'overtime' })).toMatch(/One power-up/);
+  });
+
+  it('paying takes exactly the price: small cards first, with change kept as cash', () => {
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$100', '$100', '$5');
+    expect(validateAction(s, { type: 'buy', playerId: 'p1', item: 'big_heist' })).toMatch(/Bank Thief/);
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'inside_tip' }); // $25
+    expect(bankTotal(s.players[0])).toBe(180);
+    expect(s.players[0].bank.map((c) => c.value)).toEqual([100]); // the $5 and one $100 were spent
+    expect(s.players[0].bonus).toBe(80); // change
+    expect(s.discardPile).toHaveLength(2);
+    expect(checkInvariants(s)).toEqual([]);
+
+    const poor = blankGame(3, SHOP);
+    give(poor, 0, 'bank', '$5', '$5');
+    expect(validateAction(poor, { type: 'buy', playerId: 'p1', item: 'inside_tip' })).toMatch(/need \$25/);
+  });
+
+  it('Double Up doubles the match banked this turn', () => {
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$50', '$50');
+    give(s, 0, 'hand', '$100', '$100');
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'double_up' });
+    expect(bankTotal(s.players[0])).toBe(0);
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$100') });
+    expect(bankTotal(s.players[0])).toBe(400);
+    expect(scoreGame(s).standings[0]).toMatchObject({ playerId: 'p1', total: 400 });
+    expect(s.buffs.doubleUp).toBe(false);
+
+    const noMatch = blankGame(3, SHOP);
+    give(noMatch, 0, 'bank', '$100');
+    expect(validateAction(noMatch, { type: 'buy', playerId: 'p1', item: 'double_up' })).toMatch(/no match/);
+  });
+
+  it('Big Heist steals the whole bank, cash included, and a Sheriff still stops it', () => {
+    const setup = () => {
+      const s = blankGame(3, SHOP);
+      give(s, 0, 'bank', '$100', '$100');
+      give(s, 0, 'hand', 'bank_thief');
+      give(s, 1, 'bank', '$100', '$50', '$25');
+      s.players[1].bonus = 40;
+      return s;
+    };
+    let s = buy(setup(), { type: 'buy', playerId: 'p1', item: 'big_heist' });
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_thief')[0], targetId: 'p2' });
+    expect(bankTotal(s.players[1])).toBe(0);
+    expect(bankTotal(s.players[0])).toBe(215); // 200 - 200 + 175 + 40
+    expect(s.phase).toBe('action');
+    expect(checkInvariants(s)).toEqual([]);
+
+    let blocked = setup();
+    give(blocked, 1, 'hand', 'sheriff');
+    blocked = buy(blocked, { type: 'buy', playerId: 'p1', item: 'big_heist' });
+    blocked = applyAction(blocked, { type: 'attack', playerId: 'p1', cardId: handIds(blocked, 0, 'bank_thief')[0], targetId: 'p2' });
+    blocked = applyAction(blocked, { type: 'defend', playerId: 'p2', cardId: handIds(blocked, 1, 'sheriff')[0] });
+    expect(bankTotal(blocked.players[1])).toBe(215);
+    expect(bankTotal(blocked.players[0])).toBe(0); // the $200 is gone either way
+  });
+
+  it('Insurance pays back half when you go bankrupt, once', () => {
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$100', '$100', '$100', '$50', '$50');
+    give(s, 0, 'hand', '$5', '$25');
+    stackTop(s, 'bankrupt');
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'insurance' });
+    expect(s.players[0].insured).toBe(true);
+    expect(bankTotal(s.players[0])).toBe(300);
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    expect(bankTotal(s.players[0])).toBe(150);
+    expect(s.players[0].insured).toBe(false);
+    expect(s.players[0].bank).toHaveLength(0);
+  });
+
+  it('cash in the bank is lost to Bankrupt even with no cards banked', () => {
+    let s = blankGame(3, SHOP);
+    s.players[0].bonus = 60;
+    give(s, 0, 'hand', '$5', '$25');
+    stackTop(s, 'bankrupt');
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    expect(bankTotal(s.players[0])).toBe(0);
+  });
+
+  it('Inside Tip shows the buyer the next three cards, and nobody else', () => {
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$25', '$25');
+    stackTop(s, 'bankrupt', '$100', 'sheriff');
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'inside_tip' });
+    expect(s.players[0].peek.map((c) => c.kind)).toEqual(['bankrupt', 'money', 'sheriff']);
+    expect(getPlayerView(s, 'p1').peek).toHaveLength(3);
+    expect(getPlayerView(s, 'p2').peek).toHaveLength(0);
+    expect(maskStateFor(s, 'p2').players[0].peek).toHaveLength(0);
+    expect(maskStateFor(s, 'p1').players[0].peek).toHaveLength(3);
+    s = applyAction(s, { type: 'pass', playerId: 'p1' });
+    expect(s.players[0].peek).toHaveLength(0); // forgotten once the turn is over
+  });
+
+  it('Overtime gives the same player another turn, and they can shop again', () => {
+    let s = blankGame(3, SHOP);
+    give(s, 0, 'bank', '$100', '$100', '$100');
+    give(s, 0, 'hand', '$50', '$50', '$25', '$25');
+    stackTop(s, '$5', '$100');
+    s = buy(s, { type: 'buy', playerId: 'p1', item: 'overtime' });
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$50') });
+    expect(s.currentPlayerIndex).toBe(0);
+    expect(s.phase).toBe('action');
+    expect(s.buffs).toEqual({ bought: false, doubleUp: false, heist: false, extraTurn: false });
+    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$25') });
+    expect(s.currentPlayerIndex).toBe(1);
+    expect(bankTotal(s.players[0])).toBeGreaterThanOrEqual(350);
+  });
+});
+
+describe('Bank Swap card', () => {
+  const SWAP = { ...RULE_SETS.original, bankSwapCards: 2 };
+
+  it('adds 2 cards to the basic deck, scaled with the table', () => {
+    for (const [count, swaps, cards] of [[2, 2, 82], [3, 3, 120], [4, 4, 158]] as const) {
+      const s = createGame({ players: seats(count), seed: 2, rules: SWAP });
+      const all = [...s.drawPile, ...s.players.flatMap((p) => p.hand)];
+      expect(all.filter((c) => c.kind === 'bank_swap')).toHaveLength(swaps);
+      expect(all).toHaveLength(cards);
+      expect(checkInvariants(s)).toEqual([]);
+    }
+    expect(createGame({ players: seats(2), seed: 2, rules: RULE_SETS.original }).drawPile.some((c) => c.kind === 'bank_swap')).toBe(false);
+  });
+
+  const setup = () => {
+    const s = blankGame(3, SWAP);
+    give(s, 0, 'bank', '$5', '$5');
+    s.players[0].bonus = 15;
+    give(s, 0, 'hand', 'bank_swap');
+    give(s, 1, 'bank', '$100', '$100', '$50');
+    return s;
+  };
+
+  it('trades whole banks, cash included', () => {
+    let s = setup();
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_swap')[0], targetId: 'p2' });
+    expect(bankTotal(s.players[0])).toBe(250);
+    expect(bankTotal(s.players[1])).toBe(25);
+    expect(s.players[1].bonus).toBe(15);
+    expect(s.discardPile.some((c) => c.kind === 'bank_swap')).toBe(true);
+    expect(checkInvariants(s)).toEqual([]);
+  });
+
+  it('is stopped by a Sheriff, not a Vault Lock', () => {
+    let s = setup();
+    give(s, 1, 'hand', 'sheriff', 'vault_lock');
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_swap')[0], targetId: 'p2' });
+    expect(s.phase).toBe('reaction');
+    expect(validateAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'vault_lock')[0] })).not.toBeNull();
+    s = applyAction(s, { type: 'defend', playerId: 'p2', cardId: handIds(s, 1, 'sheriff')[0] });
+    expect(bankTotal(s.players[0])).toBe(25);
+    expect(bankTotal(s.players[1])).toBe(250);
+  });
+
+  it('never has to be played: holding only a Bank Swap, you may discard instead', () => {
+    const s = blankGame(3, SWAP);
+    give(s, 0, 'bank', '$100', '$100');
+    give(s, 1, 'bank', '$5');
+    give(s, 0, 'hand', 'bank_swap', '$25');
+    expect(validateAction(s, { type: 'discard', playerId: 'p1', cardIds: handIds(s, 0, '$25') })).toBeNull();
+    // An empty bank cannot be swapped with.
+    expect(validateAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bank_swap')[0], targetId: 'p3' })).not.toBeNull();
   });
 });

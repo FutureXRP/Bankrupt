@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { cardName, type Card, type CardKind } from '../engine';
 
-const ICONS: Record<CardKind, ReactNode> = {
+const ICONS: Record<string, ReactNode> = {
   money: (
     <svg viewBox="0 0 48 48" aria-hidden="true">
       <circle cx="24" cy="24" r="19" fill="rgba(255,255,255,.22)" stroke="currentColor" strokeWidth="3" />
@@ -54,12 +54,22 @@ const ICONS: Record<CardKind, ReactNode> = {
   ),
 };
 
+ICONS.bank_swap = (
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <path d="M6 16h28" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+    <path d="m28 7 10 9-10 9" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M42 33H14" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+    <path d="m20 24-10 9 10 9" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 const SUBTITLE: Record<CardKind, string> = {
   money: 'MONEY',
   bankrupt: 'ATTACK',
   vault_lock: 'DEFENSE',
   bank_thief: 'ATTACK',
   sheriff: 'DEFENSE',
+  bank_swap: 'ATTACK',
 };
 
 type Props = {

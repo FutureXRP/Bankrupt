@@ -57,6 +57,13 @@ export type RuleConfig = {
    *   a full hand straight away. false: they wait until the end of their own turn.
    */
   refillAfterDefense: boolean;
+  /**
+   * Bank Swap cards in the basic deck (0 = none; scaled up with the deck). Played
+   * on another player to trade whole banks; a Sheriff stops it.
+   */
+  bankSwapCards: number;
+  /** Power-up shop: spend banked money on one power-up at the start of your turn. */
+  shop: boolean;
   /** Hand size (recovered rule: six). */
   handSize: number;
 };
@@ -74,6 +81,8 @@ export const DEFAULT_RULES: RuleConfig = {
   twoPlayerDefenseCopies: 6,
   deckScale: 'fixed',
   refillAfterDefense: true,
+  bankSwapCards: 0,
+  shop: false,
   handSize: 6,
 };
 
@@ -103,3 +112,15 @@ export const RULE_SETS = {
 } as const satisfies Record<string, RuleConfig>;
 
 export type RuleSetId = keyof typeof RULE_SETS;
+
+/** Optional extras that can be added to any rule set. */
+export type Extras = { shop: boolean; bankSwap: boolean };
+
+export const DEFAULT_EXTRAS: Extras = { shop: true, bankSwap: true };
+
+/** Bank Swap cards in the basic deck when that extra is on. */
+export const BANK_SWAP_CARDS = 2;
+
+export function rulesFor(ruleSet: RuleSetId, extras: Extras): RuleConfig {
+  return { ...RULE_SETS[ruleSet], shop: extras.shop, bankSwapCards: extras.bankSwap ? BANK_SWAP_CARDS : 0 };
+}

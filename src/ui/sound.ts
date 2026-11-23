@@ -27,6 +27,7 @@ const TUNES: Partial<Record<LogKind, [number, number, number, OscillatorType][]>
   final: [[523, 0, 0.15, 'triangle'], [659, 0.15, 0.15, 'triangle'], [784, 0.3, 0.35, 'triangle']],
   end: [[523, 0, 0.14, 'triangle'], [659, 0.14, 0.14, 'triangle'], [784, 0.28, 0.14, 'triangle'], [1047, 0.42, 0.5, 'triangle']],
   discard: [[240, 0, 0.08, 'triangle']],
+  shop: [[660, 0, 0.08, 'triangle'], [990, 0.08, 0.08, 'triangle'], [1320, 0.16, 0.18, 'triangle']],
 };
 
 export function playSound(kind: LogKind, volume: number) {

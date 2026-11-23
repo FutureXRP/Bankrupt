@@ -2,7 +2,7 @@
 // it hurts the leader, and whether a big attack is worth spending.
 
 import type { PlayerView } from '../engine';
-import { bankruptLoss, bestSteal, leader, chooseDiscards, listOptions, type Option, type Rand } from './common';
+import { bankruptLoss, bestSteal, self, leader, chooseDiscards, listOptions, type Option, type Rand } from './common';
 
 export function scoreOption(view: PlayerView, option: Option): number {
   const top = leader(view);
@@ -11,6 +11,7 @@ export function scoreOption(view: PlayerView, option: Option): number {
       return option.amount;
     case 'attack': {
       const isLeader = top?.id === option.target.id;
+      if (option.kind === 'bank_swap') return (option.target.total - self(view).total) * 2; // our gain plus their loss
       if (option.kind === 'bank_thief') {
         const { gain } = bestSteal(option.target.bank, view);
         return gain + gain * (isLeader ? 1 : 0.4); // our gain plus their loss

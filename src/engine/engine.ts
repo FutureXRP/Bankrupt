@@ -2,6 +2,7 @@
 
 import { BANKRUPT_TOTAL, CARD_NAMES, DEFENSE_FOR, cardName, sumMoney, type AttackKind, type Card } from './cards';
 import { nextRandom } from './rng';
+import { PEEK_COUNT, bankTotal, noBuffs, shopItem } from './shop';
 import { cloneState, type Action, type GameState, type LogEntry, type Player } from './state';
 import { pileSavedFromBankrupt, validateAction } from './validators';
 
@@ -34,8 +35,15 @@ export function applyAction(prev: GameState, action: Action): GameState {
       player.bank.push(...cards);
       const amount = sumMoney(cards);
       s.bankedThisTurn += amount;
+      let doubled = '';
+      if (s.buffs.doubleUp) {
+        s.buffs.doubleUp = false;
+        player.bonus += amount;
+        s.bankedThisTurn += amount;
+        doubled = ` DOUBLE UP — worth $${amount * 2}!`;
+      }
       player.stats.largestBank = Math.max(player.stats.largestBank, s.bankedThisTurn);
-      log(s, 'bank', `${player.name} banked ${cards.length} × $${cards[0].value} (+$${amount}).`, player.id);
+      log(s, 'bank', `${player.name} banked ${cards.length} × $${cards[0].value} (+$${amount}).${doubled}`, player.id);
       if (s.rules.turnStyle === 'one_action') endTurn(s);
       break;
     }
@@ -45,7 +53,7 @@ export function applyAction(prev: GameState, action: Action): GameState {
       const kind = card.kind as AttackKind;
       const target = byId(s, action.targetId);
       if (kind === 'bankrupt') player.stats.bankruptPlayed++;
-      else player.stats.thiefPlayed++;
+      if (kind === 'bank_thief') player.stats.thiefPlayed++;
       s.pendingAttack = { kind, attackerId: player.id, targetId: target.id, cardId: card.id };
       if (target.hand.some((c) => c.kind === DEFENSE_FOR[kind])) {
         s.phase = 'reaction';
@@ -69,7 +77,7 @@ export function applyAction(prev: GameState, action: Action): GameState {
       const defense = takeFromHand(player, action.cardId);
       s.discardPile.push(defense);
       if (pending.kind === 'bankrupt') attacker.stats.bankruptBlocked++;
-      else attacker.stats.thiefBlocked++;
+      if (pending.kind === 'bank_thief') attacker.stats.thiefBlocked++;
       log(
         s,
         'block',
@@ -91,6 +99,22 @@ export function applyAction(prev: GameState, action: Action): GameState {
       endTurn(s);
       break;
     }
+    case 'buy': {
+      const item = shopItem(action.item);
+      pay(s, player, item.price);
+      s.buffs.bought = true;
+      let note = '';
+      if (item.id === 'double_up') s.buffs.doubleUp = true;
+      if (item.id === 'big_heist') s.buffs.heist = true;
+      if (item.id === 'overtime') s.buffs.extraTurn = true;
+      if (item.id === 'insurance') player.insured = true;
+      if (item.id === 'inside_tip') {
+        player.peek = s.drawPile.slice(-PEEK_COUNT).reverse(); // first card drawn comes first
+        note = ' and peeked at the deck';
+      }
+      log(s, 'shop', `${player.name} bought ${item.name} for $${item.price}${note}.`, player.id);
+      break;
+    }
     case 'pass':
       log(s, 'pass', `${player.name} has no cards and passes.`, player.id);
       endTurn(s);
@@ -102,13 +126,46 @@ export function applyAction(prev: GameState, action: Action): GameState {
   return s;
 }
 
-/** Empties a bank (except any pile the rules let the owner keep) and reports the dollars lost and kept. */
+/**
+ * Pay a shop price from a bank: loose cash first, then the smallest money
+ * cards. Cards go to the discard pile and any overpayment comes back as cash,
+ * so the bank always drops by exactly the price.
+ */
+function pay(s: GameState, player: Player, price: number) {
+  const fromCash = Math.min(player.bonus, price);
+  player.bonus -= fromCash;
+  const due = price - fromCash;
+  if (due === 0) return;
+  const spent: Card[] = [];
+  let paid = 0;
+  for (const card of [...player.bank].sort((a, b) => a.value! - b.value!)) {
+    if (paid >= due) break;
+    spent.push(card);
+    paid += card.value!;
+  }
+  player.bank = player.bank.filter((c) => !spent.includes(c));
+  s.discardPile.push(...spent);
+  player.bonus += paid - due;
+}
+
+/**
+ * Empties a bank (except any pile the rules let the owner keep) and reports the
+ * dollars lost and kept. Insurance pays back half of what was lost, as cash.
+ */
 function wipeBank(s: GameState, victim: Player): { lost: number; kept: number } {
-  const kept = pileSavedFromBankrupt(victim.bank, s.rules);
-  const destroyed = victim.bank.filter((c) => !kept.includes(c));
+  const keptPile = pileSavedFromBankrupt(victim.bank, s.rules);
+  const destroyed = victim.bank.filter((c) => !keptPile.includes(c));
   s.discardPile.push(...destroyed);
-  victim.bank = kept;
-  return { lost: sumMoney(destroyed), kept: sumMoney(kept) };
+  victim.bank = keptPile;
+  const lost = sumMoney(destroyed) + victim.bonus;
+  victim.bonus = 0;
+  let payout = 0;
+  if (victim.insured) {
+    victim.insured = false;
+    payout = Math.floor(lost / 2 / 5) * 5;
+    victim.bonus = payout;
+  }
+  return { lost: lost - payout, kept: sumMoney(keptPile) + payout };
 }
 
 function resolveUnblocked(s: GameState) {
@@ -126,6 +183,32 @@ function resolveUnblocked(s: GameState) {
       attacker.id,
       target.id,
     );
+    endTurn(s);
+    return;
+  }
+
+  if (pending.kind === 'bank_swap') {
+    const [mine, theirs] = [bankTotal(attacker), bankTotal(target)];
+    [attacker.bank, target.bank] = [target.bank, attacker.bank];
+    [attacker.bonus, target.bonus] = [target.bonus, attacker.bonus];
+    log(
+      s,
+      'thief',
+      `BANK SWAP! ${attacker.name} traded a $${mine} bank for ${target.name}'s $${theirs}.`,
+      attacker.id,
+      target.id,
+    );
+    endTurn(s);
+    return;
+  }
+
+  if (s.buffs.heist) {
+    const haul = bankTotal(target);
+    attacker.bank.push(...target.bank);
+    attacker.bonus += target.bonus;
+    target.bank = [];
+    target.bonus = 0;
+    log(s, 'thief', `BIG HEIST! ${attacker.name} cleaned out ${target.name}'s whole bank — $${haul}!`, attacker.id, target.id);
     endTurn(s);
     return;
   }
@@ -201,7 +284,7 @@ function refill(s: GameState) {
 
       s.discardPile.push(card);
       player.stats.bankruptPlayed++;
-      if (player.bank.length === 0) {
+      if (bankTotal(player) === 0) {
         log(s, 'draw', `${player.name} drew BANKRUPT (${counter(s)}) — but had nothing in the bank to lose.`, player.id);
       } else if (player.hand.some((c) => c.kind === 'vault_lock')) {
         s.phase = 'bankrupt_draw';
@@ -254,6 +337,17 @@ function answerDrawnBankrupt(s: GameState, player: Player, cardId: string | null
 /** Check the countdown and pass the turn (or end the game). */
 function finishTurn(s: GameState) {
   const player = s.players[s.currentPlayerIndex];
+  const gameEndsNow = !s.finalRound && s.bankruptDrawnCount >= BANKRUPT_TOTAL && s.rules.endTrigger === 'immediate';
+  const overtime = s.buffs.extraTurn && !gameEndsNow;
+  s.buffs = noBuffs();
+  player.peek = [];
+  if (overtime) {
+    // Overtime: the same player goes again, and it does not use up a Final Round turn.
+    log(s, 'shop', `Overtime! ${player.name} takes another turn.`, player.id);
+    s.turnNumber++;
+    s.phase = 'action';
+    return;
+  }
   if (s.finalRound) {
     s.finalRound.turnsRemaining--;
     if (s.finalRound.turnsRemaining <= 0) return finish(s);
@@ -276,7 +370,7 @@ export type Standing = { playerId: string; name: string; total: number; cards: n
  */
 export function scoreGame(state: GameState): { standings: Standing[]; winnerIds: string[] } {
   const rows = state.players
-    .map((p) => ({ playerId: p.id, name: p.name, total: sumMoney(p.bank), cards: p.bank.length, rank: 0 }))
+    .map((p) => ({ playerId: p.id, name: p.name, total: bankTotal(p), cards: p.bank.length, rank: 0 }))
     .sort((a, b) => b.total - a.total || b.cards - a.cards);
   rows.forEach((row, i) => {
     const above = rows[i - 1];
