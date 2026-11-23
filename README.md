@@ -11,6 +11,33 @@ unless you hold a Vault Lock. When the sixth Bankrupt is drawn the game is over 
 The first design document is in [`build.md`](./build.md). The creator has since corrected how Bankrupt works;
 the correction is noted at the top of that file and this game follows it.
 
+## Boomtown, the board game
+
+The menu also has **Boomtown**, a board game built on the same idea: cash is exposed, what you own is safe. It
+follows the Bankrupt Attack style of play, where Bankrupt, Bank Thief and Bank Swap are cards you hold and
+play on other players.
+
+- **The board** is a loop of 24 spaces: 12 businesses in four colour districts, three service buildings on
+  the corners, card spaces, two taxes, a bonus and a park.
+- **A turn:** draw a card, optionally play one attack card and hire protection, then roll two dice, move, and
+  buy or pay rent where you land. Passing START pays $200.
+- **Deputy or the whole station?** The Sheriff's Station, Law Firm and Vault Works sell Deputies, Lawyers and
+  Vault Locks, which each block one attack. Land on one and either hire a single protector or buy the
+  building for $400. Once a building is owned, anyone can hire from it from anywhere on their turn, and they
+  pay the owner; the owner hires at half price.
+- **The ending:** when the sixth Bankrupt card has been played, the round in progress is finished and one
+  final round is played, so everyone has the same number of turns. Cash plus the price of everything owned
+  wins. Nobody is ever knocked out.
+
+It plays against computer players or as pass-and-play on one device, and an unfinished game is saved. It is
+not available in invite-code play yet. Rules are on its setup screen. The code is in `src/board/` (rules and
+computer players) and `src/ui/Boomtown.tsx`.
+
+From 1,500 simulated games per setup: games last 10–14 rounds; a stronger computer player beats weaker ones
+clearly more often than chance; a service building earns its owner about $270 with two players and $650 with
+four, against its $400 price. Going first is still worth roughly 4 percentage points. The prices and rents
+are first settings and have not been played by people yet.
+
 ## Run it
 
 ```bash
@@ -203,6 +230,7 @@ The creator credit shown on the menu and Credits screen is a placeholder in
 ```text
 src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgame, invariants
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
+src/board/    Boomtown, the board game: board data, rules engine and computer players
 src/net/      Invite-code play: host and guest connections and the messages between them
 src/ui/       React screens, card faces, sounds, saved settings
 tests/        Rules, match, online-message and tutorial-script tests, plus 3,000 simulated games

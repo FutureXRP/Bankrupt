@@ -168,13 +168,14 @@ type MenuProps = {
   onSolo: () => void;
   onLocal: () => void;
   onFriends: () => void;
+  onBoard: () => void;
   onTutorial: () => void;
   /** True until the tutorial has been finished or skipped once: it is then offered first. */
   isNew: boolean;
   onNavigate: (screen: 'howto' | 'settings' | 'credits') => void;
 };
 
-export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onTutorial, isNew, onNavigate }: MenuProps) {
+export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onBoard, onTutorial, isNew, onNavigate }: MenuProps) {
   return (
     <main className="menu">
       <Logo />
@@ -198,6 +199,9 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onTutori
         </button>
         <button type="button" className="btn btn--wide" onClick={onLocal}>
           Pass &amp; Play <small>one device</small>
+        </button>
+        <button type="button" className="btn btn--wide btn--board" onClick={onBoard}>
+          Boomtown <small>the board game · new</small>
         </button>
         {!isNew && (
           <button type="button" className="btn btn--wide" onClick={onTutorial}>

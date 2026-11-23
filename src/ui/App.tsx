@@ -17,6 +17,7 @@ import {
 } from '../engine';
 import { Game } from './Game';
 import { Friends, codeFromAddress } from './Online';
+import { Boomtown } from './Boomtown';
 import { Tutorial, tutorialDone } from './Tutorial';
 import { Credits, HowToPlay, Menu, SettingsScreen, Setup } from './Screens';
 import {
@@ -29,7 +30,7 @@ import {
   type Settings,
 } from './storage';
 
-type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits' | 'friends' | 'tutorial';
+type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits' | 'friends' | 'tutorial' | 'board';
 
 const DEFAULT_SEATS: SeatConfig[] = [
   { name: 'Player 1', isAI: false },
@@ -146,6 +147,14 @@ export function App() {
       return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} initialTarget={match.target} initialCarryOver={match.carryOver} onStart={start} onBack={toMenu} />;
     case 'howto':
       return <HowToPlay onBack={toMenu} onPractice={practice} onTutorial={() => setScreen('tutorial')} />;
+    case 'board':
+      return (
+        <Boomtown
+          settings={settings}
+          onToggleSound={() => setSettings((current) => ({ ...current, sound: !current.sound }))}
+          onExit={toMenu}
+        />
+      );
     case 'tutorial':
       return (
         <Tutorial
@@ -182,6 +191,7 @@ export function App() {
             setScreen('setup');
           }}
           onFriends={() => setScreen('friends')}
+          onBoard={() => setScreen('board')}
           onTutorial={() => setScreen('tutorial')}
           isNew={!tutorialDone()}
           onNavigate={setScreen}
