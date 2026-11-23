@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RULE_SETS, createGame, randomSeed, type GameState, type RuleSetId, type SeatConfig } from '../engine';
 import { Game } from './Game';
+import { Friends, codeFromAddress } from './Online';
 import { Credits, HowToPlay, Menu, SettingsScreen, Setup } from './Screens';
 import {
   clearSavedGame,
@@ -12,7 +13,7 @@ import {
   type Settings,
 } from './storage';
 
-type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits';
+type Screen = 'menu' | 'setup' | 'game' | 'howto' | 'settings' | 'credits' | 'friends';
 
 const DEFAULT_SEATS: SeatConfig[] = [
   { name: 'Player 1', isAI: false },
@@ -22,7 +23,9 @@ const DEFAULT_SEATS: SeatConfig[] = [
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
-  const [screen, setScreen] = useState<Screen>('menu');
+  // An invite link (…?join=CODE) opens straight on the join screen.
+  const [inviteCode] = useState(codeFromAddress);
+  const [screen, setScreen] = useState<Screen>(inviteCode ? 'friends' : 'menu');
   const [seats, setSeats] = useState<SeatConfig[]>(DEFAULT_SEATS);
   const [ruleSet, setRuleSet] = useState<RuleSetId>('original');
   const [game, setGame] = useState<{ key: number; state: GameState } | null>(null);
@@ -100,6 +103,15 @@ export function App() {
       return <SettingsScreen settings={settings} onChange={setSettings} onBack={toMenu} />;
     case 'credits':
       return <Credits onBack={toMenu} />;
+    case 'friends':
+      return (
+        <Friends
+          settings={settings}
+          onToggleSound={() => setSettings((s) => ({ ...s, sound: !s.sound }))}
+          onExit={toMenu}
+          initialCode={inviteCode}
+        />
+      );
     default:
       return (
         <Menu
@@ -113,6 +125,7 @@ export function App() {
             setSeats((current) => current.map((s, i) => (i < 2 ? { name: s.isAI ? `Player ${i + 1}` : s.name, isAI: false } : s)));
             setScreen('setup');
           }}
+          onFriends={() => setScreen('friends')}
           onNavigate={setScreen}
         />
       );

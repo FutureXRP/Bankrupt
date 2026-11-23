@@ -219,3 +219,14 @@ button.card:hover { transform: translateY(-4%); }
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion='full']) * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Play with Friends ---------- */
+.stack { display: grid; gap: .3rem; }
+.choice { display: grid; gap: .6rem; padding: 1rem; background: var(--panel); border: 2px solid var(--panel-line); border-radius: 1rem; }
+.choice h2 { font-size: 1.15rem; }
+.codeinput { font-size: 1.6rem; font-weight: 900; letter-spacing: .3em; text-align: center; text-transform: uppercase; }
+.invite { display: grid; gap: .5rem; justify-items: center; text-align: center; padding: 1.1rem; background: var(--panel); border: 3px solid var(--gold); border-radius: 1.2rem; }
+.invite__label { font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-size: .85rem; }
+.invite__code { font-size: clamp(2.6rem, 14vw, 4rem); font-weight: 900; letter-spacing: .18em; color: var(--gold); line-height: 1; user-select: all; }
+.roster { display: grid; gap: .45rem; }
+.roster li { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; background: var(--bg-2); border: 2px solid var(--panel-line); border-radius: .7rem; }

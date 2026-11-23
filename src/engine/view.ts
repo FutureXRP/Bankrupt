@@ -58,3 +58,20 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
     turnNumber: state.turnNumber,
   };
 }
+
+/**
+ * The game as one player may see it, in the same shape as the full state, for
+ * sending to that player's device in an invite-code game. Other hands and the
+ * draw deck keep their sizes but every card in them is replaced by a blank.
+ */
+export function maskStateFor(state: GameState, playerId: string): GameState {
+  let n = 0;
+  const blank = (): Card => ({ id: `hidden-${n++}`, kind: 'money' });
+  return {
+    ...state,
+    players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank) })),
+    drawPile: state.drawPile.map(blank),
+    removed: [],
+    rngState: 0,
+  };
+}

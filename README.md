@@ -40,12 +40,30 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 - A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
 - Play vs Computer with 1–3 opponents at Casual, Competitive or Expert level. The computer only ever sees
   what a human in its seat would see.
-- Local pass-and-play for 2–4 people on one device, with a privacy screen between turns.
+- Play with Friends: one player hosts and gets an invite code; up to three others join from their own
+  devices (see below).
+- Pass & Play for 2–4 people on one device, with a privacy screen between turns.
 - An unfinished solo game is saved in the browser and can be continued from the menu.
 - How to Play, Settings (computer speed, sound, reduced motion, text size) and Credits screens.
 
-Not built yet: online rooms, a step-by-step interactive tutorial (there is a rules page and a practice
+Not built yet: matchmaking with strangers, a step-by-step interactive tutorial (there is a rules page and a practice
 match instead), final illustrations and card-flight animations, and browser end-to-end tests in the repo.
+
+## Play with Friends (invite codes)
+
+- The host taps **Play with Friends → Host a Game** and gets a five-character code and an invite link.
+- Up to three others tap **Join Game** and type the code, or just open the link. The host can fill empty
+  seats with computer players, picks the rules, and starts the game.
+- The host's device runs the game and checks every move. Each guest is only ever sent their own cards; other
+  hands and the deck arrive blanked out.
+- If a guest drops out mid-game, a computer player takes over their seat within about 15 seconds. They can
+  take the seat back by joining again with the same code and name.
+- If the host leaves, the game ends for everyone.
+
+How it connects: the devices talk to each other directly (WebRTC, via the `peerjs` library). To find each
+other they use PeerJS's free public connection service, so there is no server to run or pay for. The
+trade-offs are that the game depends on that service being up, and that a few networks (some schools,
+offices and mobile carriers) block direct connections. Everyone on the same home Wi-Fi is the easy case.
 
 ## Three rule sets
 
@@ -98,6 +116,7 @@ The creator credit shown on the menu and Credits screen is a placeholder in
 ```text
 src/engine/   Rules only, no interface: cards, setup, actions, reactions, endgame, invariants
 src/ai/       Casual, Competitive and Expert opponents, working from a player's-eye view
+src/net/      Invite-code play: host and guest connections and the messages between them
 src/ui/       React screens, card faces, sounds, saved settings
 tests/        Rules tests for all three rule sets and the variants, plus 3,000 simulated games
 ```

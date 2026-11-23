@@ -8,7 +8,7 @@ import type { Settings } from './storage';
 
 const AI_NAMES = ['Penny', 'Buck', 'Goldie'];
 
-const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = [
+export const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = [
   {
     id: 'original',
     name: 'Original',
@@ -59,10 +59,11 @@ type MenuProps = {
   onContinue: () => void;
   onSolo: () => void;
   onLocal: () => void;
+  onFriends: () => void;
   onNavigate: (screen: 'howto' | 'settings' | 'credits') => void;
 };
 
-export function Menu({ hasSave, onContinue, onSolo, onLocal, onNavigate }: MenuProps) {
+export function Menu({ hasSave, onContinue, onSolo, onLocal, onFriends, onNavigate }: MenuProps) {
   return (
     <main className="menu">
       <Logo />
@@ -76,11 +77,11 @@ export function Menu({ hasSave, onContinue, onSolo, onLocal, onNavigate }: MenuP
         <button type="button" className={`btn btn--wide${hasSave ? '' : ' btn--primary'}`} onClick={onSolo}>
           Play vs Computer
         </button>
-        <button type="button" className="btn btn--wide" onClick={onLocal}>
-          Local Multiplayer
+        <button type="button" className="btn btn--wide" onClick={onFriends}>
+          Play with Friends <small>invite code</small>
         </button>
-        <button type="button" className="btn btn--wide" disabled>
-          Online Private Room <small>coming later</small>
+        <button type="button" className="btn btn--wide" onClick={onLocal}>
+          Pass &amp; Play <small>one device</small>
         </button>
         <button type="button" className="btn btn--wide" onClick={() => onNavigate('howto')}>
           How to Play

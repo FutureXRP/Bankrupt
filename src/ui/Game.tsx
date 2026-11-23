@@ -38,8 +38,14 @@ type Props = {
   settings: Settings;
   onToggleSound: () => void;
   onExit: () => void;
-  onPlayAgain: () => void;
-  onStateChange: (state: GameState) => void;
+  /** Omitted for an online guest: only the host can deal a new game. */
+  onPlayAgain?: () => void;
+  onStateChange?: (state: GameState) => void;
+  /**
+   * Invite-code play: the game state lives with the host and arrives from
+   * outside. This device shows one seat, and moves are handed to `onAction`.
+   */
+  online?: { state: GameState; seatId: string; runAI: boolean; onAction: (action: Action) => void };
 };
 
 function BankView({ bank, onPick, ownerName }: { bank: Card[]; onPick?: (cardId: string) => void; ownerName: string }) {
@@ -68,13 +74,15 @@ function BankView({ bank, onPick, ownerName }: { bank: Card[]; onPick?: (cardId:
   );
 }
 
-export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgain, onStateChange }: Props) {
-  const [state, setState] = useState(initialState);
+export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgain, onStateChange, online }: Props) {
+  const [localState, setState] = useState(initialState);
+  const state = online ? online.state : localState;
   const [selected, setSelected] = useState<string[]>([]);
   const [fx, setFx] = useState<LogEntry | null>(null);
   const seenLog = useRef(initialState.actionLog.length);
 
-  const humans = state.players.filter((p) => !p.isAI);
+  // Players using THIS device. Online, that is exactly one seat.
+  const humans = online ? state.players.filter((p) => p.id === online.seatId) : state.players.filter((p) => !p.isAI);
   const solo = humans.length === 1;
   const [revealedFor, setRevealedFor] = useState<string | null>(solo ? humans[0].id : null);
   const [seatId, setSeatId] = useState(humans[0].id);
@@ -84,15 +92,19 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
   const finished = state.phase === 'finished';
 
   const dispatch = (action: Action) => {
+    if (online) {
+      if (!validateAction(state, action)) online.onAction(action);
+      return;
+    }
     setState((current) => (validateAction(current, action) ? current : applyAction(current, action)));
   };
 
   // Let the app save progress.
-  useEffect(() => onStateChange(state), [state, onStateChange]);
+  useEffect(() => onStateChange?.(state), [state, onStateChange]);
 
-  // Computer players act after a short, visible pause.
+  // Computer players act after a short, visible pause (on the host's device when online).
   useEffect(() => {
-    if (!actorPlayer?.isAI) return;
+    if (!actorPlayer?.isAI || (online && !online.runAI)) return;
     const timer = setTimeout(() => {
       const view = getPlayerView(state, actorPlayer.id);
       dispatch(chooseForPhase(view, actorPlayer.difficulty ?? 'casual', Math.random));
@@ -189,7 +201,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
     <div className="game">
       <header className="topbar">
         <button type="button" className="btn btn--ghost" onClick={onExit}>
-          ← Menu
+          {online ? '← Leave' : '← Menu'}
         </button>
         <div
           className="counter"
@@ -368,7 +380,7 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
         </div>
       )}
 
-      {finished && <EndScreen state={state} onPlayAgain={onPlayAgain} onExit={onExit} />}
+      {finished && <EndScreen state={state} onPlayAgain={onPlayAgain} onExit={onExit} online={!!online} />}
     </div>
   );
 }
@@ -462,7 +474,17 @@ function DefensePrompt({
   );
 }
 
-function EndScreen({ state, onPlayAgain, onExit }: { state: GameState; onPlayAgain: () => void; onExit: () => void }) {
+function EndScreen({
+  state,
+  onPlayAgain,
+  onExit,
+  online,
+}: {
+  state: GameState;
+  onPlayAgain?: () => void;
+  onExit: () => void;
+  online: boolean;
+}) {
   const { standings, winnerIds } = scoreGame(state);
   const winners = winnerIds.map((id) => nameOf(state, id));
   return (
@@ -508,11 +530,17 @@ function EndScreen({ state, onPlayAgain, onExit }: { state: GameState; onPlayAga
           </table>
         </div>
         <div className="dialog__actions">
-          <button type="button" className="btn btn--primary" autoFocus onClick={onPlayAgain}>
-            Play Again
-          </button>
+          {onPlayAgain ? (
+            <button type="button" className="btn btn--primary" autoFocus onClick={onPlayAgain}>
+              Play Again
+            </button>
+          ) : (
+            <p className="note" role="status">
+              Waiting for the host to deal again…
+            </p>
+          )}
           <button type="button" className="btn" onClick={onExit}>
-            Return to Menu
+            {online ? 'Leave Game' : 'Return to Menu'}
           </button>
         </div>
       </div>

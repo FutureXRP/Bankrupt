@@ -11,6 +11,7 @@ import {
   getPlayerView,
   RULE_SETS,
   makeRng,
+  maskStateFor,
   validateAction,
   type Difficulty,
   type GameState,
@@ -62,6 +63,20 @@ describe('AI fairness', () => {
     for (const card of state.players[0].hand) expect(text).toContain(`"${card.id}"`);
     expect(view.players.map((p) => p.handCount)).toEqual([6, 6, 6]);
     expect(view.drawCount).toBe(state.drawPile.length);
+  });
+
+  it('the copy of the game sent to an online guest hides every card that is not theirs', () => {
+    const state = createGame({ players: [{ name: 'A', isAI: false }, { name: 'B', isAI: false }, { name: 'C', isAI: true }], seed: 4, rules: { ...RULE_SETS.piggy } });
+    const sent = JSON.stringify(maskStateFor(state, 'p2'));
+    for (const card of [...state.players[0].hand, ...state.players[2].hand, ...state.drawPile]) {
+      expect(sent).not.toContain(`"${card.id}"`);
+    }
+    for (const card of state.players[1].hand) expect(sent).toContain(`"${card.id}"`);
+    const masked = maskStateFor(state, 'p2');
+    expect(masked.players.map((p) => p.hand.length)).toEqual([6, 6, 6]);
+    expect(masked.drawPile).toHaveLength(state.drawPile.length);
+    // A guest can still check their own moves against the masked copy.
+    expect(validateAction(masked, { type: 'pass', playerId: 'p2' })).toBe(validateAction(state, { type: 'pass', playerId: 'p2' }));
   });
 
   it('gives every difficulty the same deal for the same seed', () => {
