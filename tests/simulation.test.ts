@@ -124,7 +124,7 @@ describe('simulated games', () => {
       { thiefSteals: 'random_card' },
       { thiefSteals: 'matching_group' },
       { minBankSetSize: 1 },
-      { discardOnlyWhenStuck: false },
+      { discardOnlyWhenStuck: true },
       { endTrigger: 'immediate' },
     ];
     for (const rules of variants) {

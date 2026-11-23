@@ -284,7 +284,9 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           <li>
             play <strong>Bank Thief</strong> to steal one money card from an opponent's bank.
           </li>
-          <li>If you cannot do either, discard one card.</li>
+          <li>
+            Or <strong>discard</strong> one card — you can always do this, even if you could have played something.
+          </li>
         </ul>
         <p>Then you draw back up to 6 cards. Discarded cards never come back.</p>
 

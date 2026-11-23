@@ -204,10 +204,15 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
     if (state.bankedThisTurn > 0) hint = picked.length === 0 ? 'Bank more, play an attack, or end your turn.' : '';
     else if (seat.hand.length === 0) hint = 'You have no cards left. Pass your turn.';
     else if (stuck) hint = single ? '' : 'No move available — choose one card to discard.';
-    else if (picked.length === 0) hint = 'Pick matching money to bank, or pick an attack card to play.';
+    else if (picked.length === 0) hint = state.rules.discardOnlyWhenStuck
+      ? 'Pick matching money to bank, or pick an attack card to play.'
+      : 'Pick matching money to bank, an attack card to play, or one card to discard.';
     else if (canBank || attackCard) hint = '';
-    else if (single?.kind === 'money') hint = `You need ${state.rules.minBankSetSize} or more matching cards to bank.`;
-    else if (single) hint = 'Defense cards are saved for when you are attacked.';
+    else if (single?.kind === 'money') {
+      hint = `You need ${state.rules.minBankSetSize} or more matching cards to bank${canDiscard ? ' — or you can discard this one' : ''}.`;
+    } else if (single) {
+      hint = `Defense cards are saved for when you are attacked${canDiscard ? ' — or you can discard this one' : ''}.`;
+    }
     else hint = 'Banked money must all be the same value.';
   }
 

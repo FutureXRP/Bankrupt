@@ -232,8 +232,26 @@ describe('restocking after a defense', () => {
 });
 
 describe('discarding, drawing and the countdown', () => {
-  it('only allows a discard when nothing else is legal, then refills by one', () => {
+  it('a player may always discard one card as their turn, even with a match in hand', () => {
     let s = blankGame();
+    give(s, 0, 'hand', '$100', '$100', 'bank_thief', '$5');
+    give(s, 1, 'bank', '$50');
+    stackTop(s, '$25');
+    const five = handIds(s, 0, '$5')[0];
+    expect(validateAction(s, { type: 'discard', playerId: 'p1', cardIds: [five] })).toBeNull();
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: [five] });
+    expect(s.discardPile.map((c) => c.id)).toEqual([five]);
+    expect(handIds(s, 0, '$100')).toHaveLength(2); // the match is kept for later
+    expect(s.players[0].hand).toHaveLength(6);
+    expect(s.currentPlayerIndex).toBe(1);
+    // Still one card at a time.
+    const two = blankGame();
+    give(two, 0, 'hand', '$5', '$25');
+    expect(validateAction(two, { type: 'discard', playerId: 'p1', cardIds: two.players[0].hand.map((c) => c.id) })).toMatch(/exactly one/);
+  });
+
+  it('variant: discarding only when nothing else is legal', () => {
+    let s = blankGame(3, { discardOnlyWhenStuck: true });
     give(s, 0, 'hand', '$5', '$25', '$50', '$100', 'sheriff', 'vault_lock'); // no pair, nothing to play
     stackTop(s, '$5');
     const five = handIds(s, 0, '$5')[0];
@@ -241,7 +259,7 @@ describe('discarding, drawing and the countdown', () => {
     expect(s.players[0].hand).toHaveLength(6);
     expect(s.discardPile.map((c) => c.id)).toEqual([five]);
 
-    const t = blankGame();
+    const t = blankGame(3, { discardOnlyWhenStuck: true });
     give(t, 0, 'hand', '$5', '$5', 'sheriff');
     expect(validateAction(t, { type: 'discard', playerId: 'p1', cardIds: handIds(t, 0, 'sheriff') })).toMatch(
       /no other move/,

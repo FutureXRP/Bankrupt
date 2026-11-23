@@ -35,7 +35,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 
 - The original setup: deal six cards each from the non-Bankrupt cards, then shuffle the six Bankrupt cards in.
 - A deck that grows with the table (see below), so games last about as long for 2, 3 or 4 players.
-- One action per turn: bank a matching set, play Bank Thief, or discard when stuck. Then refill to six cards.
+- One action per turn: bank a matching set, play Bank Thief, or discard one card. Then refill to six cards.
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
 - A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
@@ -144,7 +144,7 @@ rules file:
 |---|---|---|
 | Smallest set that can be banked | 2 matching cards | `minBankSetSize` |
 | What Bank Thief takes | One card the thief chooses | `thiefSteals`: `chosen_card`, `random_card` or `matching_group` |
-| Discarding when a move is available | Not allowed | `discardOnlyWhenStuck` |
+| Discarding when a move is available | Allowed (creator's rule): you may always discard one card as your turn | `discardOnlyWhenStuck` |
 | Choosing not to play a Vault Lock or Sheriff | Allowed | `allowDeclineDefense` |
 | Ties | Most banked cards wins, then shared | fixed in the engine |
 

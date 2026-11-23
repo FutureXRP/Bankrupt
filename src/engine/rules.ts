@@ -20,7 +20,10 @@ export type RuleConfig = {
    * matching_group: the thief picks a denomination and takes every card of it.
    */
   thiefSteals: 'chosen_card' | 'random_card' | 'matching_group';
-  /** §25 #7 — true: discarding is only allowed when no other move is legal. */
+  /**
+   * false (the creator's rule): a player may always discard one card as their
+   * turn, even when they could bank or attack. true: only when nothing else is legal.
+   */
   discardOnlyWhenStuck: boolean;
   /**
    * §25 #9 — what happens when the sixth Bankrupt is drawn.
@@ -72,7 +75,7 @@ export const DEFAULT_RULES: RuleConfig = {
   bankruptMode: 'trap',
   minBankSetSize: 2,
   thiefSteals: 'chosen_card',
-  discardOnlyWhenStuck: true,
+  discardOnlyWhenStuck: false,
   endTrigger: 'immediate',
   allowDeclineDefense: true,
   turnStyle: 'one_action',
