@@ -6,7 +6,7 @@ import { GuestRoom } from '../net/guest';
 import { HostRoom } from '../net/host';
 import { CODE_LENGTH, cleanCode, type LobbyInfo } from '../net/protocol';
 import { Game } from './Game';
-import { ExtrasPicker, RULE_CHOICES, extrasSummary } from './Screens';
+import { ExtrasPicker, MatchPicker, RULE_CHOICES, extrasSummary, matchLengthName } from './Screens';
 import type { Settings } from './storage';
 
 const NAME_KEY = 'bankrupt.name';
@@ -187,7 +187,8 @@ function HostView({
         settings={settings}
         onToggleSound={onToggleSound}
         onExit={onExit}
-        onPlayAgain={() => room.start()}
+        onPlayAgain={() => room.playOn()}
+        match={room.match}
         online={{ state: room.game.state, seatId: room.game.state.players[0].id, runAI: true, onAction: room.apply }}
       />
     );
@@ -279,6 +280,8 @@ function HostView({
 
       <ExtrasPicker extras={room.extras} onChange={(extras) => room.configure({ extras })} />
 
+      <MatchPicker target={room.matchTarget} onChange={(matchTarget) => room.configure({ matchTarget })} />
+
       <button
         type="button"
         className="btn btn--primary btn--wide"
@@ -316,6 +319,7 @@ function GuestView({
         onToggleSound={onToggleSound}
         onExit={onExit}
         online={{ state: room.game.state, seatId: room.game.seatId, runAI: false, onAction: room.sendAction }}
+        match={room.game.match}
       />
     );
   }
@@ -346,7 +350,8 @@ function GuestView({
             {RULE_CHOICES.find((c) => c.id === room.lobby!.ruleSet)!.summary}
           </p>
           <p className="note">
-            Extras: <strong>{extrasSummary(room.lobby.extras)}</strong>
+            Extras: <strong>{extrasSummary(room.lobby.extras)}</strong>. Match:{' '}
+            <strong>{matchLengthName(room.lobby.matchTarget)}</strong>
           </p>
         </>
       )}

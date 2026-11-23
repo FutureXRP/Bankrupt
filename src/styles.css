@@ -255,3 +255,17 @@ button.card:hover { transform: translateY(-4%); }
 .extras label { display: flex; align-items: flex-start; gap: .6rem; }
 .extras input { width: 1.35rem; height: 1.35rem; margin-top: .15rem; flex: none; accent-color: var(--gold); }
 .extras label > span { text-transform: none; letter-spacing: 0; font-size: 1rem; color: var(--text); font-weight: 400; }
+
+/* ---------- Match play ---------- */
+.matchbar { display: flex; flex-wrap: wrap; gap: .35rem .9rem; align-items: center; justify-content: center; padding: .35rem .8rem; border-radius: .7rem; background: var(--bg-2); border: 2px solid var(--panel-line); font-size: .9rem; color: var(--muted); }
+.matchbar strong { color: var(--gold); }
+.matchbar__player b { color: var(--text); font-size: 1.05rem; margin-left: .15rem; }
+.matchscore { display: grid; gap: .4rem; width: 100%; text-align: left; }
+.matchscore li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .5rem .7rem; background: var(--bg-2); border: 2px solid var(--panel-line); border-radius: .7rem; }
+.matchscore li.is-winner { border-color: var(--gold); }
+.matchscore strong { flex: 1; min-width: 5rem; }
+.matchscore small { color: var(--muted); }
+.matchscore__pips { display: flex; gap: .3rem; }
+.pip--won { background: var(--gold); border-color: #fff3c4; box-shadow: 0 0 .5rem var(--gold); }
+.matchscore__pips .pip { background: var(--bg); border-color: var(--panel-line); box-shadow: none; }
+.matchscore__pips .pip--won { background: var(--gold); border-color: #fff3c4; box-shadow: 0 0 .5rem var(--gold); }

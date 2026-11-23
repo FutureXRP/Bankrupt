@@ -61,11 +61,20 @@ match instead), final illustrations and card-flight animations, and browser end-
 - If a guest drops out mid-game, a computer player takes over their seat within about 15 seconds. They can
   take the seat back by joining again with the same code and name.
 - If the host leaves, the game ends for everyone.
+- The host can make it a match (first to 2 or 3 round wins); see below.
 
 How it connects: the devices talk to each other directly (WebRTC, via the `peerjs` library). To find each
 other they use PeerJS's free public connection service, so there is no server to run or pay for. The
 trade-offs are that the game depends on that service being up, and that a few networks (some schools,
 offices and mobile carriers) block direct connections. Everyone on the same home Wi-Fi is the easy case.
+
+## Matches
+
+On the setup screen (or in the host's lobby) a game can be made a match: **first to 2 wins** or **first to 3
+wins**. The same players play round after round, each round a full game, with the deal moving one seat each
+time. A bar above the table shows the round and everyone's wins, and the end-of-round screen shows the match
+score. If two players reach the target in the same round (a shared round win), the one who has banked more
+across the whole match takes it. The scoring lives in [`src/engine/match.ts`](./src/engine/match.ts).
 
 ## Deck size
 

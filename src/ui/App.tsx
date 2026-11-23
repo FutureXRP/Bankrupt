@@ -2,10 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   DEFAULT_EXTRAS,
   createGame,
+  dealerForRound,
+  matchWinnerIds,
+  newMatch,
+  recordRound,
   randomSeed,
   rulesFor,
   type Extras,
   type GameState,
+  type MatchState,
   type RuleSetId,
   type SeatConfig,
 } from '../engine';
@@ -38,6 +43,7 @@ export function App() {
   const [seats, setSeats] = useState<SeatConfig[]>(DEFAULT_SEATS);
   const [ruleSet, setRuleSet] = useState<RuleSetId>('original');
   const [extras, setExtras] = useState<Extras>(DEFAULT_EXTRAS);
+  const [match, setMatch] = useState<MatchState>(() => newMatch(1));
   const [game, setGame] = useState<{ key: number; state: GameState } | null>(null);
   const [saved, setSaved] = useState<SavedGame | null>(loadSavedGame);
 
@@ -47,13 +53,36 @@ export function App() {
     saveSettings(settings);
   }, [settings]);
 
-  const start = (nextSeats: SeatConfig[], nextRules: RuleSetId = ruleSet, nextExtras: Extras = extras) => {
+  const deal = (nextSeats: SeatConfig[], nextRules: RuleSetId, nextExtras: Extras, nextMatch: MatchState) => {
+    const state = createGame({
+      players: nextSeats,
+      seed: randomSeed(),
+      rules: rulesFor(nextRules, nextExtras),
+      dealerIndex: dealerForRound(nextMatch, nextSeats.length),
+    });
+    setMatch(nextMatch);
+    setGame({ key: Date.now(), state });
+    setScreen('game');
+  };
+
+  /** Start a brand-new game or match. */
+  const start = (
+    nextSeats: SeatConfig[],
+    nextRules: RuleSetId = ruleSet,
+    nextExtras: Extras = extras,
+    target: number = match.target,
+  ) => {
     setSeats(nextSeats);
     setRuleSet(nextRules);
     setExtras(nextExtras);
-    const state = createGame({ players: nextSeats, seed: randomSeed(), rules: rulesFor(nextRules, nextExtras) });
-    setGame({ key: Date.now(), state });
-    setScreen('game');
+    deal(nextSeats, nextRules, nextExtras, newMatch(target, Math.floor(Math.random() * nextSeats.length)));
+  };
+
+  /** After a finished round: deal the next round, or a fresh match if this one is over. */
+  const playOn = (finished: GameState) => {
+    const after = recordRound(match, finished);
+    if (matchWinnerIds(after)) start(seats);
+    else deal(seats, ruleSet, extras, after);
   };
 
   const resume = () => {
@@ -61,6 +90,7 @@ export function App() {
     setSeats(saved.seats);
     setRuleSet(saved.ruleSet);
     setExtras(saved.extras);
+    setMatch(saved.match);
     setGame({ key: Date.now(), state: saved.state });
     setScreen('game');
   };
@@ -75,9 +105,9 @@ export function App() {
     (state: GameState) => {
       if (seats.filter((s) => !s.isAI).length !== 1) return;
       if (state.phase === 'finished') clearSavedGame();
-      else saveGame({ seats, ruleSet, extras, state });
+      else saveGame({ seats, ruleSet, extras, match, state });
     },
-    [seats, ruleSet, extras],
+    [seats, ruleSet, extras, match],
   );
 
   switch (screen) {
@@ -89,12 +119,13 @@ export function App() {
           settings={settings}
           onToggleSound={() => setSettings((s) => ({ ...s, sound: !s.sound }))}
           onExit={toMenu}
-          onPlayAgain={() => start(seats)}
+          onPlayAgain={playOn}
+          match={match}
           onStateChange={onStateChange}
         />
       ) : null;
     case 'setup':
-      return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} onStart={start} onBack={toMenu} />;
+      return <Setup initialSeats={seats} initialRuleSet={ruleSet} initialExtras={extras} initialTarget={match.target} onStart={start} onBack={toMenu} />;
     case 'howto':
       return (
         <HowToPlay
@@ -107,6 +138,8 @@ export function App() {
                 { name: 'Buck', isAI: true, difficulty: 'casual' },
               ],
               'original',
+              extras,
+              1,
             )
           }
         />

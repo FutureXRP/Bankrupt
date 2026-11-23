@@ -68,13 +68,17 @@ describe('AI fairness', () => {
   it('the copy of the game sent to an online guest hides every card that is not theirs', () => {
     const state = createGame({ players: [{ name: 'A', isAI: false }, { name: 'B', isAI: false }, { name: 'C', isAI: true }], seed: 4, rules: { ...RULE_SETS.piggy } });
     const sent = JSON.stringify(maskStateFor(state, 'p2'));
-    for (const card of [...state.players[0].hand, ...state.players[2].hand, ...state.drawPile]) {
+    state.discardPile.push(state.drawPile.pop()!, state.drawPile.pop()!);
+    const buried = state.discardPile[0];
+    for (const card of [...state.players[0].hand, ...state.players[2].hand, ...state.drawPile, buried]) {
       expect(sent).not.toContain(`"${card.id}"`);
     }
     for (const card of state.players[1].hand) expect(sent).toContain(`"${card.id}"`);
     const masked = maskStateFor(state, 'p2');
     expect(masked.players.map((p) => p.hand.length)).toEqual([10, 10, 10]);
     expect(masked.drawPile).toHaveLength(state.drawPile.length);
+    expect(masked.discardPile).toHaveLength(2);
+    expect(masked.discardPile[1]).toEqual(state.discardPile[1]); // the top card is public
     // A guest can still check their own moves against the masked copy.
     expect(validateAction(masked, { type: 'pass', playerId: 'p2' })).toBe(validateAction(state, { type: 'pass', playerId: 'p2' }));
   });

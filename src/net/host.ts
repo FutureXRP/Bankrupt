@@ -7,6 +7,10 @@ import {
   DEFAULT_EXTRAS,
   applyAction,
   createGame,
+  dealerForRound,
+  matchWinnerIds,
+  newMatch,
+  recordRound,
   maskStateFor,
   randomSeed,
   rulesFor,
@@ -15,6 +19,7 @@ import {
   type Difficulty,
   type Extras,
   type GameState,
+  type MatchState,
   type RuleSetId,
   type SeatConfig,
 } from '../engine';
@@ -25,6 +30,7 @@ import {
   makeCode,
   peerOptions,
   roomPeerId,
+  toWire,
   type GuestMessage,
   type HostMessage,
   type LobbyInfo,
@@ -43,6 +49,8 @@ export class HostRoom {
   difficulty: Difficulty = 'casual';
   ruleSet: RuleSetId = 'original';
   extras: Extras = DEFAULT_EXTRAS;
+  matchTarget = 1;
+  match: MatchState = newMatch(1);
   game: { id: number; state: GameState } | null = null;
   version = 0;
 
@@ -114,7 +122,8 @@ export class HostRoom {
   }
 
   private send(conn: DataConnection, message: HostMessage) {
-    if (conn.open) conn.send(message);
+    if (!conn.open) return;
+    for (const piece of toWire(message)) conn.send(piece);
   }
 
   private receive(conn: DataConnection, message: GuestMessage) {
@@ -208,6 +217,7 @@ export class HostRoom {
       ],
       ruleSet: this.ruleSet,
       extras: this.extras,
+      matchTarget: this.matchTarget,
       difficulty: this.difficulty,
     };
   }
@@ -216,11 +226,12 @@ export class HostRoom {
     return MAX_PLAYERS - 1 - this.guests.length;
   }
 
-  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId; extras?: Extras }) {
+  configure(patch: { computers?: number; difficulty?: Difficulty; ruleSet?: RuleSetId; extras?: Extras; matchTarget?: number }) {
     if (patch.computers !== undefined) this.computers = Math.max(0, Math.min(patch.computers, this.maxComputers()));
     if (patch.difficulty) this.difficulty = patch.difficulty;
     if (patch.ruleSet) this.ruleSet = patch.ruleSet;
     if (patch.extras) this.extras = patch.extras;
+    if (patch.matchTarget) this.matchTarget = patch.matchTarget;
     this.sendLobby();
     this.changed();
   }
@@ -234,7 +245,7 @@ export class HostRoom {
     return 1 + this.guests.length + this.computers >= 2;
   }
 
-  /** Deal a new game for everyone in the room. Seat 1 is always the host. */
+  /** Start a new game or match for everyone in the room. Seat 1 is always the host. */
   start() {
     if (!this.canStart()) return;
     const seats: SeatConfig[] = [
@@ -242,11 +253,38 @@ export class HostRoom {
       ...this.guests.map((g) => ({ name: g.name, isAI: false })),
       ...AI_NAMES.slice(0, this.computers).map((name) => ({ name, isAI: true, difficulty: this.difficulty })),
     ];
-    const state = createGame({ players: seats, seed: randomSeed(), rules: rulesFor(this.ruleSet, this.extras) });
+    this.match = newMatch(this.matchTarget, Math.floor(Math.random() * seats.length));
+    const state = this.deal(seats);
     this.seatByConn.clear();
     this.emptySeats.clear();
     this.guests.forEach((g, i) => this.seatByConn.set(g.conn, state.players[i + 1].id));
+    this.sendState();
+    this.changed();
+  }
+
+  private deal(seats: SeatConfig[]): GameState {
+    const state = createGame({
+      players: seats,
+      seed: randomSeed(),
+      rules: rulesFor(this.ruleSet, this.extras),
+      dealerIndex: dealerForRound(this.match, seats.length),
+    });
     this.game = { id: Date.now(), state };
+    return state;
+  }
+
+  /**
+   * After a finished game: deal the next round of the match to the same seats,
+   * or start a fresh game/match if this one has been decided.
+   */
+  playOn() {
+    if (!this.game || this.game.state.phase !== 'finished') return;
+    const after = recordRound(this.match, this.game.state);
+    if (matchWinnerIds(after)) return this.start();
+    this.match = after;
+    // Same seats as the round just played, so scores stay with the right players
+    // (including any seat a computer took over when someone dropped out).
+    this.deal(this.game.state.players.map((p) => ({ name: p.name, isAI: p.isAI, difficulty: p.difficulty })));
     this.sendState();
     this.changed();
   }
@@ -266,7 +304,7 @@ export class HostRoom {
       if (!seatId) continue;
       this.send(guest.conn, {
         t: 'state',
-        game: { id: this.game.id, seatId, state: maskStateFor(this.game.state, seatId) },
+        game: { id: this.game.id, seatId, state: maskStateFor(this.game.state, seatId), match: this.match },
       });
     }
   }

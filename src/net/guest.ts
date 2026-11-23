@@ -5,6 +5,7 @@ import Peer, { type DataConnection } from 'peerjs';
 import type { Action } from '../engine';
 import {
   PING_EVERY_MS,
+  Reassembler,
   SILENCE_TIMEOUT_MS,
   peerOptions,
   roomPeerId,
@@ -31,6 +32,7 @@ export class GuestRoom {
   private timer: ReturnType<typeof setTimeout>;
   private heartbeat: ReturnType<typeof setInterval> | undefined;
   private lastSeen = 0;
+  private parts = new Reassembler();
 
   constructor(
     public code: string,
@@ -52,7 +54,11 @@ export class GuestRoom {
           else this.send({ t: 'ping' });
         }, PING_EVERY_MS);
       });
-      conn.on('data', (data) => this.receive(data as HostMessage));
+      conn.on('data', (data) => {
+        this.lastSeen = Date.now();
+        const message = this.parts.read(data);
+        if (message) this.receive(message as HostMessage);
+      });
       conn.on('close', () => this.end('The connection to the host was lost.'));
       conn.on('error', () => this.end('The connection to the host was lost.'));
     });

@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import {
   BANK_SWAP_CARDS,
   HAND_SIZE,
+  MATCH_LENGTHS,
   RULE_SETS,
   SHOP_ITEMS,
   deckCardCount,
@@ -86,6 +87,35 @@ export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (
   );
 }
 
+export function MatchPicker({ target, onChange }: { target: number; onChange: (target: number) => void }) {
+  return (
+    <fieldset className="field">
+      <legend>Match length</legend>
+      <div className="segmented">
+        {MATCH_LENGTHS.map((length) => (
+          <button
+            key={length.target}
+            type="button"
+            className={`btn${target === length.target ? ' btn--primary' : ''}`}
+            aria-pressed={target === length.target}
+            onClick={() => onChange(length.target)}
+          >
+            {length.name}
+          </button>
+        ))}
+      </div>
+      <p className="note">
+        {target === 1
+          ? 'One game decides it.'
+          : `Play round after round with the same players. The first to win ${target} rounds wins the match.`}
+      </p>
+    </fieldset>
+  );
+}
+
+export const matchLengthName = (target: number) =>
+  MATCH_LENGTHS.find((length) => length.target === target)?.name ?? `First to ${target} wins`;
+
 export function extrasSummary(extras: Extras): string {
   const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap and Lawyer cards'].filter(Boolean);
   return on.length > 0 ? on.join(' and ') : 'none';
@@ -139,18 +169,21 @@ export function Setup({
   initialSeats,
   initialRuleSet,
   initialExtras,
+  initialTarget,
   onStart,
   onBack,
 }: {
   initialSeats: SeatConfig[];
   initialRuleSet: RuleSetId;
   initialExtras: Extras;
-  onStart: (seats: SeatConfig[], ruleSet: RuleSetId, extras: Extras) => void;
+  initialTarget: number;
+  onStart: (seats: SeatConfig[], ruleSet: RuleSetId, extras: Extras, target: number) => void;
   onBack: () => void;
 }) {
   const [seats, setSeats] = useState<SeatConfig[]>(initialSeats);
   const [ruleSet, setRuleSet] = useState<RuleSetId>(initialRuleSet);
   const [extras, setExtras] = useState<Extras>(initialExtras);
+  const [target, setTarget] = useState(initialTarget);
 
   const setCount = (count: number) =>
     setSeats((current) => {
@@ -248,12 +281,14 @@ export function Setup({
 
       <ExtrasPicker extras={extras} onChange={setExtras} />
 
+      <MatchPicker target={target} onChange={setTarget} />
+
       {seats.filter((s) => !s.isAI).length > 1 && (
         <p className="note">Pass-and-play: the game hides each hand and asks you to pass the device between turns.</p>
       )}
       {duplicate && <p className="note note--warn">Give every player a different name.</p>}
 
-      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet, extras)}>
+      <button type="button" className="btn btn--primary btn--wide" disabled={duplicate} onClick={() => onStart(cleaned, ruleSet, extras, target)}>
         Start Game
       </button>
     </Page>
@@ -404,6 +439,14 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
             </tbody>
           </table>
         </div>
+
+        <h2>Matches</h2>
+        <p>
+          On the Game Setup screen you can choose a match: <strong>first to 2 wins</strong> or{' '}
+          <strong>first to 3 wins</strong>. You play round after round with the same players, and the deal moves round
+          the table each time. Every round is a full game; the richest bank wins the round. If two players win the
+          deciding round together, the one who has banked more money across the whole match takes it.
+        </p>
 
         <h2>Playing together</h2>
         <ul>

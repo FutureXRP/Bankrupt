@@ -93,13 +93,19 @@ export function getPlayerView(state: GameState, playerId: string): PlayerView {
  * sending to that player's device in an invite-code game. Other hands and the
  * draw deck keep their sizes but every card in them is replaced by a blank.
  */
+/** How much of the action log a guest's device is sent (it only shows the last few lines). */
+export const GUEST_LOG_LENGTH = 30;
+
 export function maskStateFor(state: GameState, playerId: string): GameState {
   let n = 0;
-  const blank = (): Card => ({ id: `hidden-${n++}`, kind: 'money' });
+  const blank = (): Card => ({ id: `h${n++}`, kind: 'money' });
   return {
     ...state,
     players: state.players.map((p) => (p.id === playerId ? p : { ...p, hand: p.hand.map(blank), peek: [] })),
     drawPile: state.drawPile.map(blank),
+    // Only the top of the discard pile is ever shown; the rest keeps its size.
+    discardPile: state.discardPile.map((card, i) => (i === state.discardPile.length - 1 ? card : blank())),
+    actionLog: state.actionLog.slice(-GUEST_LOG_LENGTH),
     removed: [],
     refillQueue: [],
     rngState: 0,

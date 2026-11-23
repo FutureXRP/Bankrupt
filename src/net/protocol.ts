@@ -3,7 +3,7 @@
 // (peer-to-peer) and only ever receive what their own seat is allowed to see.
 
 import type { PeerOptions } from 'peerjs';
-import type { Action, Difficulty, Extras, GameState, RuleSetId } from '../engine';
+import type { Action, Difficulty, Extras, GameState, MatchState, RuleSetId } from '../engine';
 
 export const MAX_PLAYERS = 4;
 
@@ -17,10 +17,11 @@ export type LobbyInfo = {
   players: LobbyPlayer[];
   ruleSet: RuleSetId;
   extras: Extras;
+  matchTarget: number;
   difficulty: Difficulty;
 };
 
-export type OnlineGame = { id: number; seatId: string; state: GameState };
+export type OnlineGame = { id: number; seatId: string; state: GameState; match: MatchState };
 
 export type GuestMessage = { t: 'join'; name: string } | { t: 'action'; action: Action } | { t: 'ping' };
 
@@ -63,4 +64,45 @@ export function peerOptions(): PeerOptions {
     // fall through to the default broker
   }
   return {};
+}
+
+/**
+ * A browser-to-browser channel can silently drop a message that is too big, and
+ * a long game's state is big. Anything over PART_SIZE characters is sent as
+ * numbered parts and put back together on the other side.
+ */
+export const PART_SIZE = 6_000;
+
+type Part = { t: 'part'; id: number; i: number; n: number; data: string };
+
+let nextPartId = 1;
+
+export function toWire(message: object): object[] {
+  const text = JSON.stringify(message);
+  if (text.length <= PART_SIZE) return [message];
+  const id = nextPartId++;
+  const n = Math.ceil(text.length / PART_SIZE);
+  return Array.from({ length: n }, (_, i): Part => ({
+    t: 'part',
+    id,
+    i,
+    n,
+    data: text.slice(i * PART_SIZE, (i + 1) * PART_SIZE),
+  }));
+}
+
+export class Reassembler {
+  private pending = new Map<number, string[]>();
+
+  /** Returns a whole message, or null while parts of one are still arriving. */
+  read(data: unknown): object | null {
+    const part = data as Part;
+    if (!part || part.t !== 'part') return data as object;
+    const pieces = this.pending.get(part.id) ?? [];
+    pieces[part.i] = part.data;
+    this.pending.set(part.id, pieces);
+    if (pieces.filter((p) => p !== undefined).length < part.n) return null;
+    this.pending.delete(part.id);
+    return JSON.parse(pieces.join('')) as object;
+  }
 }

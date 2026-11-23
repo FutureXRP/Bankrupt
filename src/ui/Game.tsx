@@ -16,6 +16,9 @@ import {
   getPlayerView,
   hasLegalPrimaryAction,
   isAttackKind,
+  isMultiRound,
+  matchWinnerIds,
+  recordRound,
   publicBankruptCount,
   pileSavedFromBankrupt,
   scoreGame,
@@ -27,6 +30,7 @@ import {
   type GameState,
   type LogEntry,
   type LogKind,
+  type MatchState,
   type MoneyValue,
   type Player,
 } from '../engine';
@@ -44,8 +48,10 @@ type Props = {
   settings: Settings;
   onToggleSound: () => void;
   onExit: () => void;
-  /** Omitted for an online guest: only the host can deal a new game. */
-  onPlayAgain?: () => void;
+  /** Deal again (next round or a new game). Omitted for an online guest: only the host deals. */
+  onPlayAgain?: (finished: GameState) => void;
+  /** The match this game is a round of, as it stood before this round. */
+  match?: MatchState;
   onStateChange?: (state: GameState) => void;
   /**
    * Invite-code play: the game state lives with the host and arrives from
@@ -95,13 +101,23 @@ function BankView({
   );
 }
 
-export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgain, onStateChange, online }: Props) {
+export function Game({
+  initialState,
+  settings,
+  onToggleSound,
+  onExit,
+  onPlayAgain,
+  onStateChange,
+  online,
+  match,
+}: Props) {
   const [localState, setState] = useState(initialState);
   const state = online ? online.state : localState;
   const [selected, setSelected] = useState<string[]>([]);
   const [fx, setFx] = useState<LogEntry | null>(null);
   const [shopOpen, setShopOpen] = useState(false);
-  const seenLog = useRef(initialState.actionLog.length);
+  // Id of the next log entry not yet announced. (Online guests only receive the tail of the log.)
+  const seenLog = useRef((initialState.actionLog[initialState.actionLog.length - 1]?.id ?? -1) + 1);
 
   // Players using THIS device. Online, that is exactly one seat.
   const humans = online ? state.players.filter((p) => p.id === online.seatId) : state.players.filter((p) => !p.isAI);
@@ -144,17 +160,19 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
     setShopOpen(false);
   }, [state.turnNumber, state.phase]);
 
+  const lastLogId = state.actionLog[state.actionLog.length - 1]?.id ?? -1;
+
   // Announce new events: banner, highlight and sound.
   useEffect(() => {
-    const fresh = state.actionLog.slice(seenLog.current);
-    seenLog.current = state.actionLog.length;
+    const fresh = state.actionLog.filter((entry) => entry.id >= seenLog.current);
+    seenLog.current = lastLogId + 1;
     if (fresh.length === 0) return;
     const loudest = SOUND_ORDER.map((kind) => fresh.find((e) => e.kind === kind)).find(Boolean);
     if (loudest && settings.sound) playSound(loudest.kind, settings.volume);
     const banner = BANNER_KINDS.map((kind) => fresh.find((e) => e.kind === kind)).find(Boolean);
     if (banner) setFx(banner);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.actionLog.length]);
+  }, [lastLogId]);
 
   useEffect(() => {
     if (!fx) return;
@@ -274,6 +292,18 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
           {settings.sound ? '🔊' : '🔇'}
         </button>
       </header>
+
+      {isMultiRound(match) && (
+        <p className="matchbar" aria-label="Match score">
+          <strong>Round {match.round}</strong>
+          <span>first to {match.target} wins</span>
+          {state.players.map((p) => (
+            <span key={p.id} className="matchbar__player">
+              {p.name} <b>{match.wins[p.id] ?? 0}</b>
+            </span>
+          ))}
+        </p>
+      )}
 
       {state.finalRound && !finished && (
         <p className="finalbar" role="status">
@@ -483,7 +513,15 @@ export function Game({ initialState, settings, onToggleSound, onExit, onPlayAgai
         </div>
       )}
 
-      {finished && <EndScreen state={state} onPlayAgain={onPlayAgain} onExit={onExit} online={!!online} />}
+      {finished && (
+        <EndScreen
+          state={state}
+          match={match}
+          onPlayAgain={onPlayAgain ? () => onPlayAgain(state) : undefined}
+          onExit={onExit}
+          online={!!online}
+        />
+      )}
     </div>
   );
 }
@@ -587,24 +625,69 @@ function DefensePrompt({
 
 function EndScreen({
   state,
+  match,
   onPlayAgain,
   onExit,
   online,
 }: {
   state: GameState;
+  match?: MatchState;
   onPlayAgain?: () => void;
   onExit: () => void;
   online: boolean;
 }) {
   const { standings, winnerIds } = scoreGame(state);
   const winners = winnerIds.map((id) => nameOf(state, id));
+  // Match play: score this round into the match to show where things stand.
+  const after = isMultiRound(match) ? recordRound(match, state) : undefined;
+  const champions = after ? matchWinnerIds(after) : null;
+  const again = !after ? 'Play Again' : champions ? 'New Match' : `Play Round ${after.round}`;
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="end-title">
       <div className="dialog dialog--end">
-        <p className="dialog__eyebrow">{winners.length > 1 ? 'Shared victory' : 'Winner'}</p>
-        <h2 id="end-title">
-          {winners.join(' & ')} — ${standings[0].total}
-        </h2>
+        {after && match ? (
+          <>
+            <p className="dialog__eyebrow">
+              {champions ? 'Match over' : `Round ${match.round} — ${winners.length > 1 ? 'shared win' : 'winner'}`}
+            </p>
+            <h2 id="end-title">
+              {champions
+                ? `${champions.map((id) => nameOf(state, id)).join(' & ')} ${champions.length > 1 ? 'share' : 'wins'} the match!`
+                : `${winners.join(' & ')} — $${standings[0].total}`}
+            </h2>
+            <ul className="matchscore" aria-label="Match score">
+              {[...state.players]
+                .sort((x, y) => (after.wins[y.id] ?? 0) - (after.wins[x.id] ?? 0) || (after.money[y.id] ?? 0) - (after.money[x.id] ?? 0))
+                .map((p) => (
+                  <li key={p.id} className={champions?.includes(p.id) ? 'is-winner' : undefined}>
+                    <strong>{p.name}</strong>
+                    <span
+                      className="matchscore__pips"
+                      role="img"
+                      aria-label={`${after.wins[p.id] ?? 0} of ${after.target} round wins`}
+                    >
+                      {Array.from({ length: after.target }, (_, i) => (
+                        <span key={i} className={`pip${i < (after.wins[p.id] ?? 0) ? ' pip--won' : ''}`} />
+                      ))}
+                    </span>
+                    <small>${after.money[p.id] ?? 0} banked in all</small>
+                  </li>
+                ))}
+            </ul>
+            <p className="note">
+              {champions
+                ? `This round went to ${winners.join(' & ')} with $${standings[0].total}.`
+                : `First to ${after.target} round wins takes the match.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="dialog__eyebrow">{winners.length > 1 ? 'Shared victory' : 'Winner'}</p>
+            <h2 id="end-title">
+              {winners.join(' & ')} — ${standings[0].total}
+            </h2>
+          </>
+        )}
         <div className="tablewrap">
           <table className="results">
             <thead>
@@ -643,7 +726,7 @@ function EndScreen({
         <div className="dialog__actions">
           {onPlayAgain ? (
             <button type="button" className="btn btn--primary" autoFocus onClick={onPlayAgain}>
-              Play Again
+              {again}
             </button>
           ) : (
             <p className="note" role="status">
