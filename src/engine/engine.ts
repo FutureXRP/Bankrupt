@@ -5,6 +5,7 @@ import { nextRandom } from './rng';
 import { PEEK_COUNT, bankTotal, noBuffs, shopItem } from './shop';
 import { cloneState, type Action, type GameState, type LogEntry, type Player } from './state';
 import { pileSavedFromBankrupt, validateAction } from './validators';
+import { publicBankruptCount } from './view';
 
 export class RuleError extends Error {}
 
@@ -337,7 +338,9 @@ function answerDrawnBankrupt(s: GameState, player: Player, cardId: string | null
 /** Check the countdown and pass the turn (or end the game). */
 function finishTurn(s: GameState) {
   const player = s.players[s.currentPlayerIndex];
-  const gameEndsNow = !s.finalRound && s.bankruptDrawnCount >= BANKRUPT_TOTAL && s.rules.endTrigger === 'immediate';
+  // Trap rules count Bankrupt cards drawn; attack rules count the ones played.
+  const allOut = publicBankruptCount(s) >= BANKRUPT_TOTAL;
+  const gameEndsNow = !s.finalRound && allOut && s.rules.endTrigger === 'immediate';
   const overtime = s.buffs.extraTurn && !gameEndsNow;
   s.buffs = noBuffs();
   player.peek = [];
@@ -351,10 +354,11 @@ function finishTurn(s: GameState) {
   if (s.finalRound) {
     s.finalRound.turnsRemaining--;
     if (s.finalRound.turnsRemaining <= 0) return finish(s);
-  } else if (s.bankruptDrawnCount >= BANKRUPT_TOTAL) {
+  } else if (allOut) {
     if (s.rules.endTrigger === 'immediate') return finish(s);
     s.finalRound = { triggeredByPlayerId: player.id, turnsRemaining: s.players.length };
-    log(s, 'final', 'All six Bankrupt cards are out. FINAL ROUND — everyone gets one last turn!', player.id);
+    const what = s.rules.bankruptMode === 'attack' ? 'have been played' : 'are out';
+    log(s, 'final', `All six Bankrupt cards ${what}. FINAL ROUND — everyone gets one last turn!`, player.id);
   }
 
   s.currentPlayerIndex = (s.currentPlayerIndex + 1) % s.players.length;

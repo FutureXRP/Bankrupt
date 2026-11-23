@@ -15,6 +15,7 @@ import {
   getPlayerView,
   maskStateFor,
   publicBankruptCount,
+  rulesFor,
   scoreGame,
   sumMoney,
   validateAction,
@@ -266,52 +267,74 @@ describe('discarding, drawing and the countdown', () => {
     );
   });
 
-  it('10–12. attack variant: five Bankrupt draws do nothing; the sixth schedules one final turn each', () => {
+  it('Bankrupt Attack: drawing all six does not end the game; the final round follows the last one PLAYED', () => {
     let s = blankGame(3, ATTACK_RULES);
     give(s, 0, 'hand', '$5', '$5');
-    give(s, 1, 'hand', '$25', '$25', '$5', '$50', '$100', 'sheriff');
-    give(s, 2, 'hand', '$50', '$50', '$5', '$25', '$100', 'sheriff');
-    stackTop(s, 'bankrupt', 'bankrupt', 'bankrupt', 'bankrupt', 'bankrupt', '$100', 'bankrupt', '$5', '$5', '$5', '$5');
+    give(s, 0, 'bank', '$100');
+    give(s, 1, 'bank', '$100');
+    give(s, 2, 'bank', '$50');
+    // Five Bankrupt cards have already been played and are in the discard pile.
+    for (let i = 0; i < 5; i++) s.discardPile.push(s.drawPile.splice(s.drawPile.findIndex((c) => c.kind === 'bankrupt'), 1)[0]);
+    s.bankruptDrawnCount = 5;
+    stackTop(s, 'bankrupt', '$25');
 
-    // Ava banks two cards and draws six: five Bankrupt cards and a $100.
+    // Ava banks and draws the sixth Bankrupt. Nothing is announced and nothing ends.
     s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
-    expect(s.bankruptDrawnCount).toBe(5);
+    expect(s.bankruptDrawnCount).toBe(6);
+    expect(publicBankruptCount(s)).toBe(5);
+    expect(s.finalRound).toBeUndefined();
+    expect(s.phase).toBe('action');
+
+    // Play goes round the table as normal while she holds it.
+    s = applyAction(s, { type: 'pass', playerId: 'p2' });
+    s = applyAction(s, { type: 'pass', playerId: 'p3' });
     expect(s.finalRound).toBeUndefined();
 
-    // Ben banks two and draws two, including the sixth Bankrupt.
-    s = applyAction(s, { type: 'bank', playerId: 'p2', cardIds: handIds(s, 1, '$25') });
-    expect(s.bankruptDrawnCount).toBe(6);
-    expect(s.finalRound).toEqual({ triggeredByPlayerId: 'p2', turnsRemaining: 3 });
-    expect(s.players[1].hand).toHaveLength(6); // the refill finished before the finale began
-    expect(s.currentPlayerIndex).toBe(2);
+    // She plays it: that is the last Bankrupt, so the final round begins after her turn.
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
+    expect(total(s, 1)).toBe(0);
+    expect(publicBankruptCount(s)).toBe(6);
+    expect(s.finalRound).toEqual({ triggeredByPlayerId: 'p1', turnsRemaining: 3 });
+    expect(s.actionLog.at(-1)!.text).toMatch(/have been played/);
+    expect(s.currentPlayerIndex).toBe(1);
 
-    // Final circuit: Chloe, Ava, then Ben (who drew the sixth) goes last.
-    s = applyAction(s, { type: 'bank', playerId: 'p3', cardIds: handIds(s, 2, '$50') });
+    // Everyone gets exactly one more turn, ending with the player who played it.
+    s = applyAction(s, { type: 'discard', playerId: 'p2', cardIds: [s.players[1].hand[0].id] });
+    s = applyAction(s, { type: 'discard', playerId: 'p3', cardIds: [s.players[2].hand[0].id] });
     expect(s.phase).toBe('action');
-    s = applyAction(s, {
-      type: 'attack',
-      playerId: 'p1',
-      cardId: handIds(s, 0, 'bankrupt')[0],
-      targetId: 'p3',
-    });
-    expect(s.bankruptDrawnCount).toBe(6); // a discarded Bankrupt does not change the counter
-    expect(s.phase).toBe('action');
-    s = applyAction(s, {
-      type: 'attack',
-      playerId: 'p2',
-      cardId: handIds(s, 1, 'bankrupt')[0],
-      targetId: 'p1',
-    });
+    s = applyAction(s, { type: 'discard', playerId: 'p1', cardIds: [s.players[0].hand[0].id] });
     expect(s.phase).toBe('finished');
-    expect(s.winnerIds).toEqual(['p2']); // Ben keeps his $50
+    expect(s.winnerIds).toEqual(['p1']);
     expect(checkInvariants(s)).toEqual([]);
   });
 
-  it('attack variant can also end at once on the sixth Bankrupt', () => {
+  it('Bankrupt Attack: a blocked or discarded Bankrupt still counts as played', () => {
+    const setup = () => {
+      const s = blankGame(2, ATTACK_RULES);
+      for (let i = 0; i < 5; i++) s.discardPile.push(s.drawPile.splice(s.drawPile.findIndex((c) => c.kind === 'bankrupt'), 1)[0]);
+      give(s, 0, 'hand', 'bankrupt', '$5');
+      give(s, 1, 'bank', '$100');
+      give(s, 1, 'hand', 'vault_lock');
+      return s;
+    };
+    let blocked = setup();
+    blocked = applyAction(blocked, { type: 'attack', playerId: 'p1', cardId: handIds(blocked, 0, 'bankrupt')[0], targetId: 'p2' });
+    blocked = applyAction(blocked, { type: 'defend', playerId: 'p2', cardId: handIds(blocked, 1, 'vault_lock')[0] });
+    expect(total(blocked, 1)).toBe(100);
+    expect(blocked.finalRound).toEqual({ triggeredByPlayerId: 'p1', turnsRemaining: 2 });
+
+    let thrown = setup();
+    thrown = applyAction(thrown, { type: 'discard', playerId: 'p1', cardIds: handIds(thrown, 0, 'bankrupt') });
+    expect(publicBankruptCount(thrown)).toBe(6);
+    expect(thrown.finalRound).toEqual({ triggeredByPlayerId: 'p1', turnsRemaining: 2 });
+  });
+
+  it('attack variant with an immediate ending stops when the sixth Bankrupt is played', () => {
     let s = blankGame(2, { bankruptMode: 'attack', endTrigger: 'immediate' });
-    give(s, 0, 'hand', '$5', '$5');
-    stackTop(s, 'bankrupt', 'bankrupt', 'bankrupt', 'bankrupt', 'bankrupt', 'bankrupt');
-    s = applyAction(s, { type: 'bank', playerId: 'p1', cardIds: handIds(s, 0, '$5') });
+    for (let i = 0; i < 5; i++) s.discardPile.push(s.drawPile.splice(s.drawPile.findIndex((c) => c.kind === 'bankrupt'), 1)[0]);
+    give(s, 0, 'hand', 'bankrupt');
+    give(s, 1, 'bank', '$100');
+    s = applyAction(s, { type: 'attack', playerId: 'p1', cardId: handIds(s, 0, 'bankrupt')[0], targetId: 'p2' });
     expect(s.phase).toBe('finished');
   });
 
@@ -582,6 +605,25 @@ describe('Piggy Bank rule set', () => {
     expect(plain.drawPile.length + 24).toBe(80);
     const plainTwo = createGame({ players: seats(2), seed: 9 });
     expect(plainTwo.drawPile.length + 12).toBe(80);
+  });
+
+  it('players can choose 6, 8 or 10 cards each, and the deck is sized to match', () => {
+    const decks: Record<number, number[]> = { 6: [80, 117, 154], 8: [80, 117, 154], 10: [117, 154, 191] };
+    for (const handSize of [6, 8, 10] as const) {
+      [2, 3, 4].forEach((count, i) => {
+        const rules = rulesFor('original', { shop: false, bankSwap: false, handSize });
+        const s = createGame({ players: seats(count), seed: 21, rules });
+        expect(s.players.every((p) => p.hand.length === handSize)).toBe(true);
+        expect(s.drawPile.length + count * handSize).toBe(decks[handSize][i]);
+        expect(s.drawPile.filter((c) => c.kind === 'bankrupt')).toHaveLength(6);
+        expect(checkInvariants(s)).toEqual([]);
+      });
+    }
+    // Refills go back up to the chosen size.
+    let s = createGame({ players: seats(2), seed: 3, rules: rulesFor('attack', { shop: true, bankSwap: true, handSize: 8 }) });
+    const first = s.players[s.currentPlayerIndex];
+    s = applyAction(s, { type: 'discard', playerId: first.id, cardIds: [first.hand[0].id] });
+    expect(s.players.find((p) => p.id === first.id)!.hand).toHaveLength(8);
   });
 
   it('every rule set deals ten cards and refills to ten', () => {

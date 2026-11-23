@@ -2,13 +2,16 @@
 // to sign off on (spec §25) lives here, so changing her game never means
 // rewriting the engine. The defaults are the spec's recommended playtest rules.
 
+import type { HandSize } from './cards';
+
 export type RuleConfig = {
   /**
    * How Bankrupt works.
    * trap (the creator's rule): Bankrupt is never held or played. The player who
    *   DRAWS it loses their own bank unless they play Vault Lock.
    * attack (offered as the "Bankrupt Attack" mode): Bankrupt goes to the hand
-   *   and is played on an opponent, who can block with Vault Lock.
+   *   and is played on an opponent, who can block with Vault Lock. The countdown
+   *   then follows Bankrupt cards PLAYED (or discarded), not drawn.
    */
   bankruptMode: 'trap' | 'attack';
   /** §25 #2 — smallest set of matching money that can be banked. 1 allows single cards. */
@@ -106,8 +109,8 @@ export const DEFAULT_RULES: RuleConfig = {
  *   another player, who can block with Vault Lock. After the sixth Bankrupt is
  *   drawn everyone gets one last turn, so the last ones can still be played.
  */
-/** Every rule set deals ten cards and refills to ten (the creator's rule; it was six at first). */
-export const HAND_SIZE = 10;
+/** Cards per player when nothing else is chosen. Players can pick 6, 8 or 10 on the setup screen. */
+export const HAND_SIZE: HandSize = 10;
 
 const TABLE_RULES: RuleConfig = { ...DEFAULT_RULES, deckScale: 'by_players', handSize: HAND_SIZE };
 
@@ -124,14 +127,19 @@ export const RULE_SETS = {
 
 export type RuleSetId = keyof typeof RULE_SETS;
 
-/** Optional extras that can be added to any rule set. */
-export type Extras = { shop: boolean; bankSwap: boolean };
+/** Setup choices that can be combined with any rule set. */
+export type Extras = { shop: boolean; bankSwap: boolean; handSize: HandSize };
 
-export const DEFAULT_EXTRAS: Extras = { shop: true, bankSwap: true };
+export const DEFAULT_EXTRAS: Extras = { shop: true, bankSwap: true, handSize: HAND_SIZE };
 
 /** Bank Swap cards (and, separately, Lawyer cards) in the basic deck when that extra is on. */
 export const BANK_SWAP_CARDS = 2;
 
 export function rulesFor(ruleSet: RuleSetId, extras: Extras): RuleConfig {
-  return { ...RULE_SETS[ruleSet], shop: extras.shop, bankSwapCards: extras.bankSwap ? BANK_SWAP_CARDS : 0 };
+  return {
+    ...RULE_SETS[ruleSet],
+    shop: extras.shop,
+    bankSwapCards: extras.bankSwap ? BANK_SWAP_CARDS : 0,
+    handSize: extras.handSize ?? HAND_SIZE,
+  };
 }

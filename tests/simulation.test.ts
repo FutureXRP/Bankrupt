@@ -111,6 +111,9 @@ describe('simulated games', () => {
   it('rule variants also finish cleanly', () => {
     const variants: Partial<RuleConfig>[] = [
       RULE_SETS.original,
+      { ...RULE_SETS.original, handSize: 6, shop: true, bankSwapCards: 2 },
+      { ...RULE_SETS.attack, handSize: 8, shop: true, bankSwapCards: 2 },
+      { ...RULE_SETS.piggy, handSize: 8 },
       { ...RULE_SETS.original, shop: true },
       { ...RULE_SETS.original, shop: true, bankSwapCards: 2 },
       { ...RULE_SETS.attack, bankSwapCards: 2 },

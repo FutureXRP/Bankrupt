@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import {
   BANK_SWAP_CARDS,
-  HAND_SIZE,
+  HAND_SIZES,
   MATCH_LENGTHS,
   RULE_SETS,
   SHOP_ITEMS,
@@ -27,7 +27,7 @@ export const RULE_CHOICES: { id: RuleSetId; name: string; summary: string }[] = 
     id: 'attack',
     name: 'Bankrupt Attack',
     summary:
-      "Bankrupt cards go secretly into your hand. Play one to wipe out another player's bank — unless they block it with Vault Lock. Once the sixth has been drawn, everyone gets one last turn.",
+      "Bankrupt cards go secretly into your hand. Play one to wipe out another player's bank — unless they block it with Vault Lock. After the sixth Bankrupt has been played, everyone gets one last turn.",
   },
   {
     id: 'piggy',
@@ -65,7 +65,26 @@ export function Logo() {
 export function ExtrasPicker({ extras, onChange }: { extras: Extras; onChange: (extras: Extras) => void }) {
   return (
     <fieldset className="field extras">
-      <legend>Extras</legend>
+      <legend>Cards each</legend>
+      <div className="segmented">
+        {HAND_SIZES.map((size) => (
+          <button
+            key={size}
+            type="button"
+            className={`btn${extras.handSize === size ? ' btn--primary' : ''}`}
+            aria-pressed={extras.handSize === size}
+            aria-label={`${size} cards each`}
+            onClick={() => onChange({ ...extras, handSize: size })}
+          >
+            {size}
+          </button>
+        ))}
+      </div>
+      <p className="note">
+        Everyone is dealt {extras.handSize} cards and draws back up to {extras.handSize}. More cards means more
+        matches and bigger banks.
+      </p>
+      <p className="extras__title">Extras</p>
       <label>
         <input type="checkbox" checked={extras.shop} onChange={(e) => onChange({ ...extras, shop: e.target.checked })} />
         <span>
@@ -118,7 +137,7 @@ export const matchLengthName = (target: number) =>
 
 export function extrasSummary(extras: Extras): string {
   const on = [extras.shop && 'Power-up shop', extras.bankSwap && 'Bank Swap and Lawyer cards'].filter(Boolean);
-  return on.length > 0 ? on.join(' and ') : 'none';
+  return `${extras.handSize} cards each; ${on.length > 0 ? on.join(' and ') : 'no extras'}`;
 }
 
 type MenuProps = {
@@ -314,23 +333,17 @@ const REFERENCE: { card: Card; text: string }[] = [
   },
 ];
 
-/** Deck contents at each table size, worked out from the rules so this page cannot go stale. */
-const DECKS = [2, 3, 4].map((players) => {
-  const size = deckSizeFor(players, 'by_players', BANK_SWAP_CARDS);
-  return {
-    players,
-    money: size.moneyCopies,
-    specials: size.specialCopies,
-    swaps: size.swapCopies,
-    withExtras: deckCardCount(size),
-    withoutExtras: deckCardCount({ ...size, swapCopies: 0 }),
-  };
-});
-const TWO_PLAYER = DECKS[0];
-const PIGGY_TWO_PLAYER_DEFENSES = twoPlayerDefenseCount(
-  deckSizeFor(2, 'by_players'),
-  RULE_SETS.piggy.twoPlayerDefenseCopies,
-);
+/** Deck sizes worked out from the rules, so this page cannot go stale. */
+const DECK_ROWS = [2, 3, 4].map((players) => ({
+  players,
+  totals: HAND_SIZES.map((hand) => {
+    const size = deckSizeFor(players, 'by_players', BANK_SWAP_CARDS, hand);
+    return { hand, cards: deckCardCount({ ...size, swapCopies: 0 }), withExtras: deckCardCount(size), swaps: size.swapCopies };
+  }),
+}));
+const SWAP_COUNTS = DECK_ROWS.flatMap((row) => row.totals.map((t) => t.swaps));
+const TWO_PLAYER_SIZE = deckSizeFor(2, 'by_players', 0, 10);
+const PIGGY_TWO_PLAYER_DEFENSES = twoPlayerDefenseCount(TWO_PLAYER_SIZE, RULE_SETS.piggy.twoPlayerDefenseCopies);
 
 export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPractice: () => void }) {
   return (
@@ -355,9 +368,9 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           </li>
         </ul>
         <p>
-          Everyone starts with {HAND_SIZE} cards. After your turn you draw back up to {HAND_SIZE}. If you use a Vault
-          Lock, Sheriff or Lawyer when it is not your turn, you draw back up to {HAND_SIZE} straight away. Discarded
-          cards never come back.
+          On the Game Setup screen you choose how many cards everyone holds: <strong>6, 8 or 10</strong>. Everyone
+          starts with that many, and after your turn you draw back up to it. If you use a Vault Lock, Sheriff or
+          Lawyer when it is not your turn, you draw back up straight away. Discarded cards never come back.
         </p>
 
         <h2>Watch out — Bankrupt!</h2>
@@ -402,38 +415,40 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
 
         <h2>Extra: Bank Swap and Lawyer cards</h2>
         <p>
-          When switched on, Bank Swap cards and the same number of Lawyer cards are shuffled into the deck (
-          {DECKS.map((d) => `${d.swaps} of each with ${d.players} players`).join(', ')}). Play a Bank Swap on another
+          When switched on, Bank Swap cards and the same number of Lawyer cards are shuffled into the deck (between{' '}
+          {Math.min(...SWAP_COUNTS)} and {Math.max(...SWAP_COUNTS)} of each, depending on the size of the deck). Play
+          a Bank Swap on another
           player to trade your whole bank for theirs — perfect when you are behind. Only a <strong>Lawyer</strong> can
           stop it; a Sheriff cannot. You never have to play a Bank Swap.
         </p>
 
         <h2>What is in the deck</h2>
         <p>
-          There are always exactly 6 Bankrupt cards. The rest of the deck grows with the number of players, so the
-          game lasts about as long however many are playing.
+          There are always exactly 6 Bankrupt cards. The rest is money ($5, $25, $50 and $100 in equal numbers), Vault
+          Locks, Bank Thieves and Sheriffs. The deck grows with the number of players and the number of cards each, so
+          the game lasts a good while however you set it up. This is how many cards are in the deck:
         </p>
         <div className="tablewrap">
           <table className="results">
             <thead>
               <tr>
                 <th scope="col">Players</th>
-                <th scope="col">Each money value</th>
-                <th scope="col">Vault Lock, Bank Thief, Sheriff</th>
-                <th scope="col">Bank Swap, Lawyer (extra)</th>
-                <th scope="col">Cards in all</th>
+                {HAND_SIZES.map((hand) => (
+                  <th key={hand} scope="col">
+                    {hand} cards each
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {DECKS.map((d) => (
-                <tr key={d.players}>
-                  <th scope="row">{d.players}</th>
-                  <td>{d.money}</td>
-                  <td>{d.specials} each</td>
-                  <td>{d.swaps} each</td>
-                  <td>
-                    {d.withoutExtras} <small>({d.withExtras} with the extra cards)</small>
-                  </td>
+              {DECK_ROWS.map((row) => (
+                <tr key={row.players}>
+                  <th scope="row">{row.players}</th>
+                  {row.totals.map((t) => (
+                    <td key={t.hand}>
+                      {t.cards} <small>({t.withExtras} with Bank Swap &amp; Lawyer)</small>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -468,17 +483,18 @@ export function HowToPlay({ onBack, onPractice }: { onBack: () => void; onPracti
           Pick this on the Game Setup screen to turn Bankrupt into a weapon. When you draw a Bankrupt card it goes
           into your hand, and on your turn you can play it on another player to wipe out their whole bank. They can
           block it with a Vault Lock. Drawing one is a secret — nobody is told, and the counter only goes up when a
-          Bankrupt is played. Once the sixth has been drawn, everyone gets one last turn, so nobody is left holding
-          a Bankrupt they never got to use.
+          Bankrupt is played (or thrown away). The game does not end when the Bankrupt cards are drawn: it carries on
+          until all six have been <strong>played</strong>. After the last one is played, everyone gets one final
+          turn.
         </p>
 
         <h2>Piggy Bank rules — a gentler twist</h2>
         <p>
           Also on the Game Setup screen. Bankrupt is a trap again, but when you go bankrupt you keep your smallest
           pile (the one worth the least — but a one-pile bank is still all gone). After the sixth Bankrupt, everyone
-          gets one last turn. In a 2-player game there are only {PIGGY_TWO_PLAYER_DEFENSES} Vault Locks and{' '}
-          {PIGGY_TWO_PLAYER_DEFENSES} Sheriffs (the usual deck has {TWO_PLAYER.specials} of each), so attacks get
-          through more often.
+          gets one last turn. In a 2-player game a third of the Vault Locks and Sheriffs are left out (for example{' '}
+          {PIGGY_TWO_PLAYER_DEFENSES} of each instead of {TWO_PLAYER_SIZE.specialCopies}), so attacks get through more
+          often.
         </p>
 
         <h2>The cards</h2>

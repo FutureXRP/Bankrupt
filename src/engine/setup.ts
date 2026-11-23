@@ -21,7 +21,7 @@ export function createGame(options: GameOptions): GameState {
   if (count < 2 || count > 4) throw new Error('BANKRUPT is for 2 to 4 players.');
   const rules: RuleConfig = { ...DEFAULT_RULES, ...options.rules };
 
-  const deckSize = deckSizeFor(count, rules.deckScale, rules.bankSwapCards);
+  const deckSize = deckSizeFor(count, rules.deckScale, rules.bankSwapCards, rules.handSize);
   const deck = buildDeck(deckSize);
   const bankrupts = deck.filter((c) => c.kind === 'bankrupt');
   const removed: typeof deck = [];

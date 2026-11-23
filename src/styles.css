@@ -190,13 +190,13 @@ button.card:hover { transform: translateY(-4%); }
 .banner--final, .banner--end { background: var(--gold); color: var(--gold-ink); }
 @keyframes banner { 0% { transform: scale(.7); opacity: 0; } 12% { transform: scale(1.04); opacity: 1; } 20%, 85% { transform: scale(1); opacity: 1; } 100% { opacity: 0; } }
 
-.hand { display: grid; grid-template-columns: repeat(10, minmax(0, 5.6rem)); gap: .45rem; justify-content: center; padding-top: .5rem; }
-@media (max-width: 62rem) { .hand { grid-template-columns: repeat(5, minmax(0, 6.2rem)); } }
+.hand { display: grid; grid-template-columns: repeat(var(--cols, 10), minmax(0, 5.6rem)); gap: .45rem; justify-content: center; padding-top: .5rem; }
+@media (max-width: 62rem) { .hand { grid-template-columns: repeat(var(--half, 5), minmax(0, 6.2rem)); } }
 .hand__empty { grid-column: 1 / -1; color: var(--muted); font-style: italic; text-align: center; }
 .controls { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: center; min-height: 3rem; }
 .hint { color: var(--muted); font-weight: 700; text-align: center; flex-basis: 100%; }
 @media (max-width: 36rem) {
-  .hand { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .35rem; }
+  .hand { grid-template-columns: repeat(var(--half, 5), minmax(0, 1fr)); gap: .35rem; width: 100%; max-width: 26rem; margin: 0 auto; }
   .counter__label { display: none; }
 }
 
@@ -269,3 +269,4 @@ button.card:hover { transform: translateY(-4%); }
 .pip--won { background: var(--gold); border-color: #fff3c4; box-shadow: 0 0 .5rem var(--gold); }
 .matchscore__pips .pip { background: var(--bg); border-color: var(--panel-line); box-shadow: none; }
 .matchscore__pips .pip--won { background: var(--gold); border-color: #fff3c4; box-shadow: 0 0 .5rem var(--gold); }
+.extras__title { font-weight: 800; color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; margin-top: .4rem; }

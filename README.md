@@ -35,7 +35,7 @@ The build uses relative paths, so `dist/` can be dropped onto any static host.
 
 - The original setup: deal six cards each from the non-Bankrupt cards, then shuffle the six Bankrupt cards in.
 - A deck that grows with the table (see below), so games last about as long for 2, 3 or 4 players.
-- One action per turn: bank a matching set, play Bank Thief, or discard one card. Then refill to ten cards (everyone is dealt ten).
+- One action per turn: bank a matching set, play Bank Thief, or discard one card. Then refill your hand (6, 8 or 10 cards, chosen at setup).
 - Bankrupt as a trap: whoever draws it loses their bank unless they play Vault Lock. Sheriff stops Bank Thief.
 - The Bankrupt counter, scoring and tie-breaks.
 - A choice of Original, Bankrupt Attack or Piggy Bank rules on the setup screen (see below).
@@ -76,23 +76,33 @@ time. A bar above the table shows the round and everyone's wins, and the end-of-
 score. If two players reach the target in the same round (a shared round win), the one who has banked more
 across the whole match takes it. The scoring lives in [`src/engine/match.ts`](./src/engine/match.ts).
 
-## Deck size
+## Hand size and deck size
 
-Everyone is dealt ten cards and refills to ten. There are always six Bankrupt cards. The rest of the deck grows
-with the number of players, because the game ends on the sixth Bankrupt and a bigger table empties the deck
-faster:
+On the setup screen players choose how many cards everyone holds: **6, 8 or 10** (10 by default). Everyone is
+dealt that many and refills to it.
 
-| Players | Each money value | Vault Lock / Bank Thief / Sheriff | Deck | With Bank Swap + Lawyer | Average rounds |
-|---|---|---|---|---|---|
-| 2 | 21 | 9 each | 117 cards | 123 cards (3 of each) | about 15 |
-| 3 | 28 | 12 each | 154 cards | 162 cards (4 of each) | about 15 |
-| 4 | 35 | 15 each | 191 cards | 201 cards (5 of each) | about 14 |
+There are always six Bankrupt cards. The rest of the deck grows with the number of players and the hand size,
+because a bigger table or bigger hands empty the deck faster. Cards in the deck (with the Bank Swap and Lawyer
+extra in brackets):
 
-Round counts are from 600 simulated games per row under Original rules with both extras on; Bankrupt Attack
-runs a little longer (16–18 rounds). The shuffle itself was checked over 20,000 deals: Bankrupt cards land
-evenly through the deck. The multipliers are `DECK_FACTOR_BY_PLAYERS` in
-[`src/engine/cards.ts`](./src/engine/cards.ts); setting `deckScale: 'fixed'` in the rules file goes back to
-the basic 80 cards at every table size.
+| Players | 6 cards each | 8 cards each | 10 cards each |
+|---|---|---|---|
+| 2 | 80 (84) | 80 (84) | 117 (123) |
+| 3 | 117 (123) | 117 (123) | 154 (162) |
+| 4 | 154 (162) | 154 (162) | 191 (201) |
+
+Average game length from 500 simulated games per setup, both extras on:
+
+| Mode | 6 cards each | 8 cards each | 10 cards each |
+|---|---|---|---|
+| Original | 15–16 rounds | 11–12 rounds | 14–17 rounds |
+| Bankrupt Attack | about 20 rounds | about 16 rounds | 18–22 rounds |
+| Piggy Bank | 14–18 rounds | 11–13 rounds | 15–16 rounds |
+
+Eight cards each is the quicker game: deck sizes can only move in half-deck steps, so it shares the six-card
+deck. The shuffle itself was checked over 20,000 deals: Bankrupt cards land evenly through the deck. The
+multipliers are `DECK_FACTORS` in [`src/engine/cards.ts`](./src/engine/cards.ts); setting `deckScale: 'fixed'`
+in the rules file goes back to the basic 80 cards at every table size.
 
 ## Three rule sets
 
@@ -109,7 +119,9 @@ All three live in [`src/engine/rules.ts`](./src/engine/rules.ts).
 - A drawn Bankrupt goes into your hand. On your turn you can play it on another player to wipe out their
   whole bank; they can block it with a Vault Lock.
 - Drawing one is secret: nothing is announced and the on-screen counter only counts Bankrupts that have been
-  played. Once the sixth has been drawn, everyone gets one last turn, so the last ones can still be played.
+  played (or discarded).
+- The game does not end when the Bankrupt cards are drawn. It carries on until all six have been played; then
+  everyone gets one final turn.
 
 **Piggy Bank** is the Original with a softer landing, chosen after simulating 3,000 computer-vs-computer
 games per setup:
@@ -147,11 +159,12 @@ and is lost to Bankrupt, but an ordinary Bank Thief can only take cards. Prices 
 a Lawyer stops it (Sheriff does not). Holding a Bank Swap never forces you to play it. The extra adds the same
 number of each card:
 
-| Players | Bank Swaps | Lawyers | Deck with this extra on |
-|---|---|---|---|
-| 2 | 3 | 3 | 123 cards |
-| 3 | 4 | 4 | 162 cards |
-| 4 | 5 | 5 | 201 cards |
+| Deck (see above) | Bank Swaps | Lawyers |
+|---|---|---|
+| 80-card deck | 2 | 2 |
+| 117-card deck | 3 | 3 |
+| 154-card deck | 4 | 4 |
+| 191-card deck | 5 | 5 |
 
 ## Rules still to confirm with the creator
 

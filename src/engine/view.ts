@@ -42,13 +42,14 @@ export type PlayerView = {
 };
 
 /**
- * The Bankrupt count everyone is allowed to know. When Bankrupt is a trap, every
- * draw is public. When it is held and played (attack mode), draws are secret
- * and only the ones that have been played are counted.
+ * The Bankrupt count that drives the countdown, and that everyone may know.
+ * When Bankrupt is a trap, it is the number drawn (every draw is public). When
+ * it is held and played (attack mode), draws are secret: it is the number that
+ * have been played or discarded, i.e. the Bankrupt cards in the discard pile.
  */
 export function publicBankruptCount(state: GameState): number {
   if (state.rules.bankruptMode === 'trap') return state.bankruptDrawnCount;
-  return state.players.reduce((sum, p) => sum + p.stats.bankruptPlayed, 0);
+  return state.discardPile.filter((c) => c.kind === 'bankrupt').length;
 }
 
 export function getPlayerView(state: GameState, playerId: string): PlayerView {

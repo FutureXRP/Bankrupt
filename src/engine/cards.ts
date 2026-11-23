@@ -45,14 +45,28 @@ export const BASE_DECK: DeckSize = { moneyCopies: MONEY_COPIES, specialCopies: S
 
 /**
  * How many times the basic money / Vault Lock / Bank Thief / Sheriff cards are
- * used at each table size. Bigger tables (and ten-card hands) empty the deck
- * faster, and the game ends on the sixth Bankrupt, so the deck grows to keep
- * games about the same length. Every factor must keep 14x and 6x whole numbers.
+ * used, by cards-per-player and then by table size. Bigger tables and bigger
+ * hands empty the deck faster, and the game ends on the sixth Bankrupt, so the
+ * deck grows to keep games a sensible length: roughly 14-16 rounds with 6 or
+ * 10 cards each, and a quicker 12 or so with 8.
+ * Every factor must keep 14x and 6x whole numbers.
  */
-export const DECK_FACTOR_BY_PLAYERS: Record<number, number> = { 2: 1.5, 3: 2, 4: 2.5 };
+export const DECK_FACTORS: Record<number, Record<number, number>> = {
+  6: { 2: 1, 3: 1.5, 4: 2 },
+  8: { 2: 1, 3: 1.5, 4: 2 },
+  10: { 2: 1.5, 3: 2, 4: 2.5 },
+};
 
-export function deckSizeFor(playerCount: number, scale: 'fixed' | 'by_players', bankSwapCards = 0): DeckSize {
-  const factor = scale === 'by_players' ? (DECK_FACTOR_BY_PLAYERS[playerCount] ?? 1) : 1;
+export const HAND_SIZES = [6, 8, 10] as const;
+export type HandSize = (typeof HAND_SIZES)[number];
+
+export function deckSizeFor(
+  playerCount: number,
+  scale: 'fixed' | 'by_players',
+  bankSwapCards = 0,
+  handSize = 10,
+): DeckSize {
+  const factor = scale === 'by_players' ? (DECK_FACTORS[handSize]?.[playerCount] ?? 1) : 1;
   return {
     moneyCopies: MONEY_COPIES * factor,
     specialCopies: SPECIAL_COPIES * factor,

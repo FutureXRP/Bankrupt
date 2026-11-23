@@ -1,6 +1,6 @@
 // The game table (spec §15.3) and endgame screen (§15.4).
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { chooseForPhase } from '../ai';
 import {
   BANKRUPT_TOTAL,
@@ -369,7 +369,10 @@ export function Game({
           </div>
         )}
 
-        <div className="hand" role="group" aria-label={handVisible ? 'Your hand' : `${seat.name}'s hand, hidden`}>
+        <div
+          className="hand"
+          style={{ '--cols': state.rules.handSize, '--half': Math.ceil(state.rules.handSize / 2) } as CSSProperties}
+          role="group" aria-label={handVisible ? 'Your hand' : `${seat.name}'s hand, hidden`}>
           {seat.hand.map((card) =>
             handVisible ? (
               <CardView
