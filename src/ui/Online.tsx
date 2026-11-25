@@ -190,6 +190,18 @@ function HostView({
   }
 
   const lobby = room.lobby();
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const share = async () => {
+    try {
+      await navigator.share({
+        title: 'BANKRUPT',
+        text: `Join my BANKRUPT game! The code is ${room.code}.`,
+        url: inviteLink(room.code),
+      });
+    } catch {
+      // The share sheet was closed, or sharing is not allowed here: the code is still on screen.
+    }
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(inviteLink(room.code));
@@ -223,10 +235,23 @@ function HostView({
           <p className="invite__code" data-testid="invite-code">
             {room.code}
           </p>
-          <p className="note">Friends tap “Play with Friends”, then “Join Game”, and type this code.</p>
-          <button type="button" className="btn" onClick={copy}>
-            {copied ? 'Link copied!' : 'Copy invite link'}
-          </button>
+          <p className={`invite__status${room.listening ? ' is-ready' : ''}`} role="status">
+            {room.listening ? '● Ready — friends can join now' : '○ Reconnecting — friends can join again in a moment…'}
+          </p>
+          <div className="dialog__actions">
+            {canShare && (
+              <button type="button" className="btn btn--primary" onClick={share}>
+                Send invite
+              </button>
+            )}
+            <button type="button" className="btn" onClick={copy}>
+              {copied ? 'Link copied!' : 'Copy invite link'}
+            </button>
+          </div>
+          <p className="note">
+            Friends open the link, or tap “Play with Friends” → “Join Game” and type the code.{' '}
+            <strong>Come back to this screen after sending it</strong> — friends connect while this screen is open.
+          </p>
         </section>
       )}
 
@@ -346,9 +371,12 @@ function GuestView({
       </header>
 
       {room.status === 'connecting' && (
-        <p className="note" role="status">
-          Looking for game {room.code}…
-        </p>
+        <div className="invite" role="status">
+          <p className="invite__label">Looking for game</p>
+          <p className="invite__code">{room.code}</p>
+          <p className="note">{room.lookingHint || 'Connecting…'}</p>
+          {room.attempts > 1 && <p className="note">Attempt {room.attempts}. You do not need to do anything.</p>}
+        </div>
       )}
       {room.status === 'reconnecting' && (
         <p className="note note--warn" role="alert">

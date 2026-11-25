@@ -354,3 +354,25 @@ button.card:hover { transform: translateY(-4%); }
   .space__icon { font-size: 38cqw; }
   .space__price { font-size: 19cqw; }
 }
+.invite__status { font-weight: 800; color: var(--gold); }
+.invite__status.is-ready { color: var(--good); }
+
+/* ---------- Older browsers (no container queries, e.g. iOS 15): fixed sizes so cards stay readable ---------- */
+@supports not (container-type: inline-size) {
+  .card__face { border-radius: .5rem; border-width: .25rem; gap: .1rem; }
+  .card__corner { top: .15rem; left: .3rem; font-size: .8rem; }
+  .card__icon { width: 46%; }
+  .card__title { font-size: .8rem; }
+  .card--money5 .card__title, .card--money25 .card__title, .card--money50 .card__title, .card--money100 .card__title { font-size: 1.3rem; }
+  .card__sub { font-size: .45rem; }
+  .card__backmark { font-size: 1.6rem; }
+  .card--sm .card__face { border-width: .12rem; border-radius: .3rem; }
+  .card--sm .card__title { font-size: .5rem; }
+  .card--sm.card--money5 .card__title, .card--sm.card--money25 .card__title, .card--sm.card--money50 .card__title, .card--sm.card--money100 .card__title { font-size: .7rem; }
+  .card--sm .card__corner { font-size: .45rem; top: .05rem; left: .15rem; }
+  .card--xs .card__face { border-width: 1px; border-radius: .15rem; }
+  .space__icon { font-size: 1.15rem; }
+  .space__name { font-size: .5rem; }
+  .space__price { font-size: .62rem; }
+  .space .token { width: .95rem; height: .95rem; font-size: .5rem; }
+}

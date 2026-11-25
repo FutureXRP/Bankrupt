@@ -27,6 +27,7 @@ import {
 import {
   MAX_PLAYERS,
   PING_EVERY_MS,
+  RETRY_EVERY_MS,
   SILENCE_TIMEOUT_MS,
   makeCode,
   peerOptions,
@@ -54,6 +55,8 @@ export class HostRoom {
   matchCarry = false;
   match: MatchState = newMatch(1);
   game: { id: number; state: GameState } | null = null;
+  /** True while the connection service knows this game's code, i.e. friends can find it right now. */
+  listening = false;
   version = 0;
 
   private peer!: Peer;
@@ -61,6 +64,7 @@ export class HostRoom {
   private listeners = new Set<() => void>();
   private closed = false;
   private attempts = 0;
+  private restoring: ReturnType<typeof setTimeout> | undefined;
   private lastTick = Date.now();
   /** Seats whose player dropped out mid-game, by device and by name, so they can come back. */
   private emptySeats = new Map<string, { seatId: string; name: string }>();
@@ -90,7 +94,13 @@ export class HostRoom {
   /** Back on screen: make sure new players (and returning ones) can still find this game. */
   private onVisibility = () => {
     if (document.visibilityState !== 'visible' || this.closed) return;
-    if (this.peer.disconnected && !this.peer.destroyed) this.peer.reconnect();
+    if (this.peer.disconnected || this.peer.destroyed) {
+      this.listening = false;
+      this.changed();
+      clearTimeout(this.restoring);
+      this.restoring = undefined;
+      this.restore(true);
+    }
   };
 
   subscribe = (listener: () => void) => {
@@ -103,20 +113,35 @@ export class HostRoom {
     for (const listener of this.listeners) listener();
   }
 
+  /**
+   * Register this game with the connection service under its code, so friends can
+   * find it. Called again whenever that registration is lost for good.
+   */
   private open() {
-    this.peer = new Peer(roomPeerId(this.code), peerOptions());
-    this.peer.on('open', () => {
+    const peer = new Peer(roomPeerId(this.code), peerOptions());
+    this.peer = peer;
+    if (this.status === 'error') this.status = 'opening';
+    const mine = () => peer === this.peer && !this.closed;
+
+    peer.on('open', () => {
+      if (!mine()) return;
       this.status = 'open';
+      this.listening = true;
       this.changed();
     });
-    this.peer.on('connection', (conn) => this.accept(conn));
-    this.peer.on('disconnected', () => {
-      // Lost the broker, not the players. Reconnect so new players can still join.
-      if (!this.closed && !this.peer.destroyed) this.peer.reconnect();
-    });
-    this.peer.on('error', (err) => {
-      if (err.type === 'unavailable-id' && this.attempts++ < 5) {
-        // Someone else is already using this code: pick another.
+    peer.on('connection', (conn) => mine() && this.accept(conn));
+    const lostService = () => {
+      if (!mine()) return;
+      this.listening = false;
+      this.changed();
+      this.restore();
+    };
+    peer.on('disconnected', lostService);
+    peer.on('close', lostService);
+    peer.on('error', (err) => {
+      if (!mine()) return;
+      if (this.status === 'opening' && err.type === 'unavailable-id' && this.attempts++ < 5) {
+        // Before anyone has seen the code: somebody else is using it, so pick another.
         this.peer.destroy();
         this.code = makeCode();
         this.open();
@@ -124,10 +149,31 @@ export class HostRoom {
       }
       if (this.status === 'opening') {
         this.status = 'error';
-        this.error = 'Could not reach the game-connection service. Check your internet and try again.';
-        this.changed();
+        this.error = 'Could not reach the game-connection service. Check your internet — still trying…';
       }
+      // Once the code has been shown it must never change. Whatever went wrong,
+      // the only answer is to get this same code back onto the service.
+      this.listening = !peer.disconnected && !peer.destroyed && this.status === 'open';
+      this.changed();
+      this.restore();
     });
+  }
+
+  /** Keep trying, every few seconds, until friends can find this game again. */
+  private restore(now = false) {
+    if (this.closed || this.restoring) return;
+    this.restoring = setTimeout(
+      () => {
+        this.restoring = undefined;
+        if (this.closed) return;
+        const healthy = this.listening && !this.peer.destroyed && !this.peer.disconnected;
+        if (healthy) return;
+        if (this.peer.destroyed) this.open();
+        else if (this.peer.disconnected) this.peer.reconnect();
+        this.restore();
+      },
+      now ? 0 : RETRY_EVERY_MS,
+    );
   }
 
   private accept(conn: DataConnection) {
@@ -351,6 +397,7 @@ export class HostRoom {
     if (this.closed) return;
     this.closed = true;
     clearInterval(this.heartbeat);
+    clearTimeout(this.restoring);
     document.removeEventListener('visibilitychange', this.onVisibility);
     window.removeEventListener('online', this.onVisibility);
     for (const guest of this.guests) this.send(guest.conn, { t: 'closed' });

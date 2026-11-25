@@ -8,6 +8,7 @@
 import Peer, { type DataConnection } from 'peerjs';
 import type { Action } from '../engine';
 import {
+  FIND_FOR_MS,
   PING_EVERY_MS,
   RECONNECT_FOR_MS,
   RETRY_EVERY_MS,
@@ -22,7 +23,8 @@ import {
   type OnlineGame,
 } from './protocol';
 
-const CONNECT_TIMEOUT_MS = 20_000;
+/** How long one attempt may take before it is abandoned and a fresh one is made. */
+const CONNECT_TIMEOUT_MS = 12_000;
 
 export class GuestRoom {
   status: 'connecting' | 'lobby' | 'playing' | 'reconnecting' | 'ended' = 'connecting';
@@ -44,6 +46,10 @@ export class GuestRoom {
   /** True once the host has let us in; from then on a lost connection is retried. */
   private joined = false;
   private giveUpAt = 0;
+  /** While still looking for the game: why the last attempt failed, and when to stop. */
+  private lookReason = '';
+  private lookUntil = Date.now() + FIND_FOR_MS;
+  attempts = 0;
   /** Counts connection attempts so events from an abandoned attempt are ignored. */
   private attempt = 0;
 
@@ -66,8 +72,21 @@ export class GuestRoom {
     for (const listener of this.listeners) listener();
   }
 
+  /** What to tell the player while still looking for the game. */
+  get lookingHint(): string {
+    if (this.lookReason === '') return '';
+    if (this.lookReason === 'peer-unavailable') {
+      return 'Not there yet. If the host has just left the game to send you the code, you will connect as soon as they are back on it. Still trying…';
+    }
+    if (this.lookReason === 'timeout' || this.lookReason === 'closed' || this.lookReason === 'silence') {
+      return 'Found the game — still connecting. If the host has switched to another app, you will connect when they come back.';
+    }
+    return 'Having trouble reaching the connection service. Check your internet. Still trying…';
+  }
+
   private connect() {
     this.dropConnection();
+    this.attempts++;
     const attempt = ++this.attempt;
     const current = () => attempt === this.attempt && this.status !== 'ended';
     const peer = new Peer(peerOptions());
@@ -116,14 +135,22 @@ export class GuestRoom {
   private lost(reason: string) {
     if (this.status === 'ended') return;
     if (!this.joined) {
-      // Never got in: tell the player why instead of retrying forever.
-      this.end(
-        reason === 'peer-unavailable' || reason === 'timeout'
-          ? "Couldn't find a game with that code. Check the code and make sure the host is still waiting."
-          : reason === 'closed' || reason === 'silence'
-            ? 'The connection to the host was lost.'
-            : 'Could not reach the game-connection service. Check your internet and try again.',
-      );
+      // Not in yet. Keep looking for a few minutes: the host is very often away from
+      // the game screen for a moment, sending the code to the people about to join.
+      this.lookReason = reason;
+      this.dropConnection();
+      if (Date.now() > this.lookUntil) {
+        this.end(
+          reason === 'peer-unavailable'
+            ? "Couldn't find a game with that code. Check the code, and make sure the host has the game open on the screen that shows the code."
+            : reason === 'timeout' || reason === 'closed' || reason === 'silence'
+              ? 'Found the game, but the two devices could not connect to each other. This happens on some mobile, school and work networks. Try with both devices on the same Wi-Fi.'
+              : 'Could not reach the game-connection service. Check your internet and try again.',
+        );
+        return;
+      }
+      this.changed();
+      this.retryTimer = setTimeout(() => this.connect(), RETRY_EVERY_MS);
       return;
     }
     if (this.status !== 'reconnecting') {
@@ -142,7 +169,7 @@ export class GuestRoom {
   /** Coming back to the page (after a call, another app, a network change): check in at once. */
   private onVisibility = () => {
     if (document.visibilityState !== 'visible' || this.status === 'ended') return;
-    if (this.status === 'reconnecting') {
+    if (this.status === 'reconnecting' || (this.status === 'connecting' && this.retryTimer)) {
       this.connect();
     } else if (this.joined && Date.now() - this.lastSeen > SILENCE_TIMEOUT_MS) {
       this.lost('silence');

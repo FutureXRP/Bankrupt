@@ -13,6 +13,12 @@ export const SILENCE_TIMEOUT_MS = 20_000;
 /** A guest who has lost the connection keeps trying to get back in for this long. */
 export const RECONNECT_FOR_MS = 15 * 60_000;
 export const RETRY_EVERY_MS = 3_000;
+/**
+ * A guest who has not got in yet keeps looking for this long before giving up.
+ * The host has usually just left the game screen to send the code, so the first
+ * attempts often fail through no fault of the code.
+ */
+export const FIND_FOR_MS = 3 * 60_000;
 
 export type LobbyPlayer = { name: string; kind: 'host' | 'guest' | 'computer' };
 
@@ -115,16 +121,19 @@ export class Reassembler {
 }
 
 /**
- * A random id kept in this browser, so the host can tell "the same device
- * coming back after a dropped connection" from "a new player with the same name".
+ * A random id for this browser TAB, so the host can tell "the same player coming
+ * back after a dropped connection" from "a new player with the same name". It is
+ * kept per tab (it survives a reload, but two tabs never share one): if it were
+ * shared across the browser, a second player joining from another tab would be
+ * mistaken for the first one reconnecting and would take over their seat.
  */
 export function deviceId(): string {
   const KEY = 'bankrupt.device';
   try {
-    let id = localStorage.getItem(KEY);
+    let id = sessionStorage.getItem(KEY);
     if (!id) {
       id = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem(KEY, id);
+      sessionStorage.setItem(KEY, id);
     }
     return id;
   } catch {

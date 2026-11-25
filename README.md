@@ -96,6 +96,11 @@ Not built yet: matchmaking with strangers, final illustrations and card-flight a
   the game ends for everyone.
 - The host can make it a match (first to 2 or 3 round wins); see below.
 
+Joining is patient on purpose. The host nearly always leaves the game screen for a moment to send the code,
+which suspends their page. A friend who opens the link during that time keeps looking for three minutes and
+connects by itself as soon as the host is back; the host's lobby shows whether friends can join right now. A
+game's code never changes once it has been shown.
+
 How it connects: the devices talk to each other directly (WebRTC, via the `peerjs` library). To find each
 other they use PeerJS's free public connection service, so there is no server to run or pay for. The
 trade-offs are that the game depends on that service being up, and that a few networks (some schools,
